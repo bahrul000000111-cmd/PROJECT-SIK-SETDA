@@ -311,7 +311,7 @@ const DpaPage = () => {
                         (node.uraian || '').toLowerCase().includes(lowerQuery);
         if (isMatch) {
           const contextString = parentContext.length > 0 
-            ? parentContext.map(p => `Parent ${p.tipe}: ${p.uraian}`).join(' | ') 
+            ? parentContext.map(p => p.uraian).join(' → ') 
             : 'Tidak ada induk';
           
           result.push({
@@ -329,7 +329,7 @@ const DpaPage = () => {
                              (rb.kode || '').toLowerCase().includes(lowerQuery) || 
                              (rb.uraian || '').toLowerCase().includes(lowerQuery);
              if (isMatch) {
-                const contextString = newContext.map(p => `Parent ${p.tipe}: ${p.uraian}`).join(' | ');
+                const contextString = newContext.map(p => p.uraian).join(' → ');
                 result.push({
                   ...rb,
                   tipe: 'Rincian Belanja',
