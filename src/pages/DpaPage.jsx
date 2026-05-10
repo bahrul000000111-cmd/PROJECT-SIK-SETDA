@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { Shield, ChevronDown, ChevronRight, Folder, FileText, Activity, Pencil, Plus, X, ListTree, Banknote, MapPin } from 'lucide-react';
+import { Shield, ChevronDown, ChevronRight, Folder, FileText, Activity, Pencil, Plus, X, ListTree, Banknote, MapPin, Trash } from 'lucide-react';
 import { DpaContext, calculateTreeTotals } from '../context/DpaContext';
 
 const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
@@ -25,9 +25,15 @@ const CHILD_ADD_MAP = {
   'Sub Kegiatan': { label: 'Rincian Belanja', mode: 'add_rincian' },
 };
 
+const LEVEL_ORDER = {
+  'Bagian': 1,
+  'Program': 2,
+  'Kegiatan': 3,
+  'Sub Kegiatan': 4,
+  'Rincian Belanja': 5
+};
 
-
-const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild }) => {
+const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, onDelete, activeLevelFilter }) => {
   const [isExpanded, setIsExpanded] = useState(forceExpandAll);
 
   React.useEffect(() => {
@@ -37,6 +43,9 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild }) 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
   };
+
+  const isFilteredOut = activeLevelFilter && activeLevelFilter !== 'all' && LEVEL_ORDER[node.tipe] >= LEVEL_ORDER[activeLevelFilter];
+  const effectivelyExpanded = isExpanded && !isFilteredOut;
 
   const getIndentClass = (lvl) => {
     switch(lvl) {
@@ -123,6 +132,14 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild }) 
               <Pencil size={14} />
             </button>
 
+            <button 
+              onClick={(e) => { e.stopPropagation(); onDelete(node.id, node.tipe); }}
+              className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-800 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 rounded-md transition-colors cursor-pointer"
+              title="Hapus"
+            >
+              <Trash size={14} />
+            </button>
+
             {CHILD_ADD_MAP[node.tipe] && (
               <button
                 onClick={(e) => { e.stopPropagation(); onAddChild(CHILD_ADD_MAP[node.tipe].mode, node.id); }}
@@ -146,15 +163,15 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild }) 
         </div>
       </div>
 
-      {isExpanded && node.children && (
+      {effectivelyExpanded && node.children && (
         <div className="flex flex-col w-full bg-white dark:bg-gray-900">
           {node.children.map(child => (
-            <ExpandableRow key={child.id} node={child} level={level + 1} forceExpandAll={forceExpandAll} onEdit={onEdit} onAddChild={onAddChild} />
+            <ExpandableRow key={child.id} node={child} level={level + 1} forceExpandAll={forceExpandAll} onEdit={onEdit} onAddChild={onAddChild} onDelete={onDelete} activeLevelFilter={activeLevelFilter} />
           ))}
         </div>
       )}
 
-      {isExpanded && isSubKegiatan && node.rincianBelanja && (
+      {effectivelyExpanded && isSubKegiatan && node.rincianBelanja && (
         <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 m-4 rounded-xl overflow-hidden shadow-sm">
           <div className="p-3 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
             <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
@@ -182,14 +199,23 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild }) 
                       <span className="px-2.5 py-1 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded text-xs font-medium">{rb.sumberDana}</span>
                     </td>
                     <td className="px-4 py-4 text-right font-bold text-gray-900 dark:text-white">{formatCurrency(rb.total || rb.totalAnggaran || 0)}</td>
-                    <td className="px-4 py-4 text-center">
-                       <button 
-                          onClick={(e) => { e.stopPropagation(); onEdit({...rb, tipe: 'Rincian Belanja'}); }}
-                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors cursor-pointer opacity-0 group-hover/row:opacity-100"
-                          title="Edit Rincian"
-                        >
-                          <Pencil size={14} />
-                        </button>
+                    <td className="px-4 py-4">
+                      <div className="flex justify-center items-center gap-2">
+                         <button 
+                            onClick={(e) => { e.stopPropagation(); onEdit({...rb, tipe: 'Rincian Belanja'}); }}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors cursor-pointer opacity-0 group-hover/row:opacity-100"
+                            title="Edit Rincian"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); onDelete(rb.id, 'Rincian Belanja'); }}
+                            className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-800 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 rounded-md transition-colors cursor-pointer opacity-0 group-hover/row:opacity-100"
+                            title="Hapus Rincian"
+                          >
+                            <Trash size={14} />
+                          </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -212,6 +238,7 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild }) 
 const DpaPage = () => {
   const { dpaData, setDpaData } = useContext(DpaContext);
   const [forceExpandAll, setForceExpandAll] = useState(false);
+  const [activeLevelFilter, setActiveLevelFilter] = useState('all');
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -239,6 +266,26 @@ const DpaPage = () => {
 
   const toggleExpandAll = () => {
     setForceExpandAll(!forceExpandAll);
+  };
+
+  const deleteNode = (tree, id) => {
+    return tree.filter(node => node.id !== id).map(node => {
+      const cloned = { ...node };
+      if (cloned.children) {
+        cloned.children = deleteNode(cloned.children, id);
+      }
+      if (cloned.rincianBelanja) {
+        cloned.rincianBelanja = cloned.rincianBelanja.filter(rb => rb.id !== id);
+      }
+      return cloned;
+    });
+  };
+
+  const handleDelete = (id, namaTipe) => {
+    if (window.confirm(`Apakah Anda yakin ingin menghapus ${namaTipe} ini beserta seluruh isinya?`)) {
+      const newData = deleteNode(dpaData, id);
+      setDpaData(calculateTreeTotals(newData));
+    }
   };
 
   const handleEdit = (node) => {
@@ -460,9 +507,11 @@ const DpaPage = () => {
       {/* Header Card (Overview) */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-2xl flex items-center justify-center shrink-0">
-            <Shield size={28} className="text-yellow-600 dark:text-yellow-500" strokeWidth={1.5} />
-          </div>
+          <img 
+            src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Lambang_Kabupaten_Donggala.png/410px-Lambang_Kabupaten_Donggala.png" 
+            alt="Logo Donggala" 
+            className="w-14 h-14 object-contain shrink-0" 
+          />
           <div className="flex flex-col">
             <h3 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Sekretariat Daerah</h3>
             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Keseluruhan Anggaran</span>
@@ -485,13 +534,25 @@ const DpaPage = () => {
         {/* Action Bar */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50 dark:bg-gray-900/20">
           <div className="flex items-center gap-2 text-sm font-bold tracking-wide flex-wrap">
-            <span className="text-blue-800 dark:text-blue-400">BAGIAN</span>
+            <button 
+              onClick={() => setActiveLevelFilter(activeLevelFilter === 'Bagian' ? 'all' : 'Bagian')}
+              className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${activeLevelFilter === 'Bagian' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-400 underline' : 'text-blue-800 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30'}`}
+            >BAGIAN</button>
             <span className="text-gray-300 dark:text-gray-600">|</span>
-            <span className="text-teal-600 dark:text-teal-400">PROGRAM</span>
+            <button 
+              onClick={() => setActiveLevelFilter(activeLevelFilter === 'Program' ? 'all' : 'Program')}
+              className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${activeLevelFilter === 'Program' ? 'bg-teal-100 dark:bg-teal-900/50 text-teal-600 dark:text-teal-400 underline' : 'text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/30'}`}
+            >PROGRAM</button>
             <span className="text-gray-300 dark:text-gray-600">|</span>
-            <span className="text-orange-600 dark:text-orange-400">KEGIATAN</span>
+            <button 
+              onClick={() => setActiveLevelFilter(activeLevelFilter === 'Kegiatan' ? 'all' : 'Kegiatan')}
+              className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${activeLevelFilter === 'Kegiatan' ? 'bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 underline' : 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/30'}`}
+            >KEGIATAN</button>
             <span className="text-gray-300 dark:text-gray-600">|</span>
-            <span className="text-pink-600 dark:text-pink-400">SUB KEGIATAN</span>
+            <button 
+              onClick={() => setActiveLevelFilter(activeLevelFilter === 'Sub Kegiatan' ? 'all' : 'Sub Kegiatan')}
+              className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${activeLevelFilter === 'Sub Kegiatan' ? 'bg-pink-100 dark:bg-pink-900/50 text-pink-600 dark:text-pink-400 underline' : 'text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/30'}`}
+            >SUB KEGIATAN</button>
           </div>
           
           <div className="flex items-center gap-3">
@@ -521,6 +582,8 @@ const DpaPage = () => {
               forceExpandAll={forceExpandAll} 
               onEdit={handleEdit}
               onAddChild={handleOpenAddModal}
+              onDelete={handleDelete}
+              activeLevelFilter={activeLevelFilter}
             />
           ))}
         </div>
