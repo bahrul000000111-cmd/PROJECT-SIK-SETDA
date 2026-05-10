@@ -49,7 +49,7 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
   };
 
   const getIndentClass = (lvl) => {
-    switch(lvl) {
+    switch (lvl) {
       case 0: return 'pl-4';
       case 1: return 'pl-10';
       case 2: return 'pl-16';
@@ -59,7 +59,7 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
   };
 
   const getTypeStyles = (type) => {
-    switch(type) {
+    switch (type) {
       case 'Bagian': return { badge: 'bg-blue-900 text-white', icon: Folder, textClass: 'font-bold text-gray-900 dark:text-white', size: 16 };
       case 'Program': return { badge: 'bg-teal-600 text-white', icon: Folder, textClass: 'font-semibold text-gray-800 dark:text-gray-100', size: 16 };
       case 'Kegiatan': return { badge: 'bg-orange-500 text-white', icon: Activity, textClass: 'font-medium text-gray-700 dark:text-gray-200', size: 14 };
@@ -70,7 +70,7 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
 
   const getKeteranganBelanja = (n) => {
     const count = n.children?.length || 0;
-    switch(n.tipe) {
+    switch (n.tipe) {
       case 'Bagian': return `Total Belanja dari ${count} Program`;
       case 'Program': return `Total Belanja dari ${count} Kegiatan`;
       case 'Kegiatan': return `Total Belanja dari ${count} Sub Kegiatan`;
@@ -85,7 +85,7 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
 
   return (
     <React.Fragment>
-      <div 
+      <div
         className={`group flex items-start justify-between py-4 pr-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${!isSubKegiatan ? 'cursor-pointer' : ''} ${getIndentClass(level)}`}
         onClick={!isSubKegiatan ? toggleExpand : undefined}
       >
@@ -95,7 +95,7 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
               isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />
             ) : <span className="w-[18px] inline-block"></span>}
           </div>
-          
+
           <div className="flex flex-col gap-1.5 flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${styles.badge}`}>
@@ -125,7 +125,7 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
           </div>
 
           <div className="flex items-center gap-2">
-            <button 
+            <button
               onClick={(e) => { e.stopPropagation(); onEdit(node); }}
               className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors cursor-pointer"
               title="Edit"
@@ -133,7 +133,7 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
               <Pencil size={14} />
             </button>
 
-            <button 
+            <button
               onClick={(e) => { e.stopPropagation(); onDelete(node.id, node.tipe); }}
               className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-800 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 rounded-md transition-colors cursor-pointer"
               title="Hapus"
@@ -153,7 +153,7 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
             )}
 
             {isSubKegiatan && (
-              <button 
+              <button
                 onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
                 className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-4 py-1.5 rounded-md shadow-sm transition-colors cursor-pointer ml-2"
               >
@@ -176,7 +176,7 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
         <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 m-4 rounded-xl overflow-hidden shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="p-3 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
             <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-              <FileText size={16} className="text-blue-600 dark:text-blue-400"/>
+              <FileText size={16} className="text-blue-600 dark:text-blue-400" />
               Detail Rincian Belanja
             </h4>
           </div>
@@ -202,20 +202,20 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
                     <td className="px-4 py-4 text-right font-bold text-gray-900 dark:text-white">{formatCurrency(rb.total || rb.totalAnggaran || 0)}</td>
                     <td className="px-4 py-4">
                       <div className="flex justify-center items-center gap-2">
-                         <button 
-                            onClick={(e) => { e.stopPropagation(); onEdit({...rb, tipe: 'Rincian Belanja'}); }}
-                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors cursor-pointer opacity-0 group-hover/row:opacity-100"
-                            title="Edit Rincian"
-                          >
-                            <Pencil size={14} />
-                          </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); onDelete(rb.id, 'Rincian Belanja'); }}
-                            className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-800 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 rounded-md transition-colors cursor-pointer opacity-0 group-hover/row:opacity-100"
-                            title="Hapus Rincian"
-                          >
-                            <Trash size={14} />
-                          </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onEdit({ ...rb, tipe: 'Rincian Belanja' }); }}
+                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors cursor-pointer opacity-0 group-hover/row:opacity-100"
+                          title="Edit Rincian"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onDelete(rb.id, 'Rincian Belanja'); }}
+                          className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-800 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 rounded-md transition-colors cursor-pointer opacity-0 group-hover/row:opacity-100"
+                          title="Hapus Rincian"
+                        >
+                          <Trash size={14} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -242,7 +242,7 @@ const DpaPage = () => {
   const [activeLevelFilter, setActiveLevelFilter] = useState('all');
   const [activeLevelFilterIndex, setActiveLevelFilterIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState(null); // 'add_bagian','add_program','add_kegiatan','add_sub_kegiatan','add_rincian','edit'
@@ -278,19 +278,19 @@ const DpaPage = () => {
     return tree.map(node => {
       const cloned = { ...node };
       let isMatch = (cloned.kode || '').toLowerCase().includes(lowerQuery) || (cloned.uraian || '').toLowerCase().includes(lowerQuery);
-      
+
       let filteredChildren = [];
       if (cloned.children) {
         filteredChildren = getSearchFilteredTree(cloned.children, query);
       }
-      
+
       let filteredRincian = [];
       if (cloned.rincianBelanja) {
-        filteredRincian = cloned.rincianBelanja.filter(rb => 
+        filteredRincian = cloned.rincianBelanja.filter(rb =>
           (rb.kode || '').toLowerCase().includes(lowerQuery) || (rb.uraian || '').toLowerCase().includes(lowerQuery)
         );
       }
-      
+
       if (isMatch || filteredChildren.length > 0 || filteredRincian.length > 0) {
         cloned.children = cloned.children ? filteredChildren : cloned.children;
         cloned.rincianBelanja = cloned.rincianBelanja ? filteredRincian : cloned.rincianBelanja;
@@ -306,14 +306,14 @@ const DpaPage = () => {
 
     tree.forEach(node => {
       if (currentDepth === focusedIndex) {
-        const isMatch = !lowerQuery || 
-                        (node.kode || '').toLowerCase().includes(lowerQuery) || 
-                        (node.uraian || '').toLowerCase().includes(lowerQuery);
+        const isMatch = !lowerQuery ||
+          (node.kode || '').toLowerCase().includes(lowerQuery) ||
+          (node.uraian || '').toLowerCase().includes(lowerQuery);
         if (isMatch) {
-          const contextString = parentContext.length > 0 
-            ? parentContext.map(p => p.uraian).join(' → ') 
+          const contextString = parentContext.length > 0
+            ? parentContext.map(p => p.uraian).join(' → ')
             : 'Tidak ada induk';
-          
+
           result.push({
             ...node,
             parentContextString: contextString
@@ -324,19 +324,19 @@ const DpaPage = () => {
         if (node.children) {
           result = result.concat(getFlattenedFocusedLevelData(node.children, focusedIndex, query, currentDepth + 1, newContext));
         } else if (node.rincianBelanja && currentDepth + 1 === focusedIndex) {
-           node.rincianBelanja.forEach(rb => {
-             const isMatch = !lowerQuery || 
-                             (rb.kode || '').toLowerCase().includes(lowerQuery) || 
-                             (rb.uraian || '').toLowerCase().includes(lowerQuery);
-             if (isMatch) {
-                const contextString = newContext.map(p => p.uraian).join(' → ');
-                result.push({
-                  ...rb,
-                  tipe: 'Rincian Belanja',
-                  parentContextString: contextString
-                });
-             }
-           });
+          node.rincianBelanja.forEach(rb => {
+            const isMatch = !lowerQuery ||
+              (rb.kode || '').toLowerCase().includes(lowerQuery) ||
+              (rb.uraian || '').toLowerCase().includes(lowerQuery);
+            if (isMatch) {
+              const contextString = newContext.map(p => p.uraian).join(' → ');
+              result.push({
+                ...rb,
+                tipe: 'Rincian Belanja',
+                parentContextString: contextString
+              });
+            }
+          });
         }
       }
     });
@@ -435,17 +435,17 @@ const DpaPage = () => {
       if (node.id === updatedNode.id) {
         return { ...node, ...updatedNode };
       }
-      
+
       let newChildren = node.children;
       let newRincian = node.rincianBelanja;
-      
+
       if (node.children) {
         newChildren = recursiveUpdate(node.children, updatedNode);
       }
       if (node.rincianBelanja) {
         newRincian = node.rincianBelanja.map(rb => rb.id === updatedNode.id ? { ...rb, ...updatedNode } : rb);
       }
-      
+
       return { ...node, children: newChildren, rincianBelanja: newRincian };
     });
   };
@@ -461,14 +461,14 @@ const DpaPage = () => {
       kode: editFormData.kode || '-',
       uraian: editFormData.uraian,
     };
-    
+
     if (currentNode.tipe === 'Rincian Belanja') {
       updatedNode.total = numericAnggaran;
       updatedNode.sumberDana = editFormData.sumberDana;
     } else {
       updatedNode.totalAnggaran = numericAnggaran;
     }
-    
+
     const newData = recursiveUpdate(dpaData, updatedNode);
     setDpaData(calculateTreeTotals(newData));
     setIsModalOpen(false);
@@ -545,7 +545,7 @@ const DpaPage = () => {
   };
 
   const isEditFormValid = editFormData.uraian.trim() !== '' && editFormData.totalAnggaran.trim() !== '';
-  
+
   const isAddFormValid = (() => {
     if (modalMode === 'add_rincian') {
       return addFormData.uraian.trim() !== '' && addFormData.nilaiAnggaran.trim() !== '';
@@ -570,7 +570,7 @@ const DpaPage = () => {
 
   return (
     <div className="flex flex-col gap-6 pb-10">
-      
+
       {/* Header & Breadcrumb */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 font-medium">
@@ -586,17 +586,17 @@ const DpaPage = () => {
       {/* Header Card (Overview) */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <img 
-            src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Lambang_Kabupaten_Donggala.png/410px-Lambang_Kabupaten_Donggala.png" 
-            alt="Logo Donggala" 
-            className="w-14 h-14 object-contain shrink-0" 
+          <img
+            src="https://www.google.com/url?sa=t&source=web&rct=j&url=https://gor.wikipedia.org/wiki/Berkas:Lambang_Kabupaten_Donggala.png&ved=2ahUKEwjsrejZ-a6UAxWwT2wGHR_gICkQjRx6BAgEEBY&opi=89978449&usg=AOvVaw3hNTUTz7hkgtMoPrR7EiCT"
+            alt="Logo Donggala"
+            className="w-14 h-14 object-contain shrink-0"
           />
           <div className="flex flex-col">
             <h3 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Sekretariat Daerah</h3>
             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Keseluruhan Anggaran</span>
           </div>
         </div>
-        
+
         <div className="flex flex-col md:flex-row gap-6 md:gap-10">
           <div className="flex flex-col items-start xl:items-end">
             <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-1">Akumulasi Alokasi Anggaran</span>
@@ -609,7 +609,7 @@ const DpaPage = () => {
 
       {/* Tree Table Container */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden flex flex-col relative">
-        
+
         {/* Action Bar */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50 dark:bg-gray-900/20">
           <div className="flex items-center gap-4 flex-wrap">
@@ -617,7 +617,7 @@ const DpaPage = () => {
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                 <Search size={16} />
               </span>
-              <input 
+              <input
                 type="text"
                 placeholder="Cari Kode/Uraian DPA..."
                 value={searchQuery}
@@ -626,22 +626,22 @@ const DpaPage = () => {
               />
             </div>
             <div className="flex items-center gap-2 text-sm font-bold tracking-wide">
-              <button 
+              <button
                 onClick={() => { setActiveLevelFilter('Bagian'); setActiveLevelFilterIndex(1); }}
                 className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${activeLevelFilter === 'Bagian' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-400 underline' : 'text-blue-800 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30'}`}
               >BAGIAN</button>
               <span className="text-gray-300 dark:text-gray-600">|</span>
-              <button 
+              <button
                 onClick={() => { setActiveLevelFilter('Program'); setActiveLevelFilterIndex(2); }}
                 className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${activeLevelFilter === 'Program' ? 'bg-teal-100 dark:bg-teal-900/50 text-teal-600 dark:text-teal-400 underline' : 'text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/30'}`}
               >PROGRAM</button>
               <span className="text-gray-300 dark:text-gray-600">|</span>
-              <button 
+              <button
                 onClick={() => { setActiveLevelFilter('Kegiatan'); setActiveLevelFilterIndex(3); }}
                 className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${activeLevelFilter === 'Kegiatan' ? 'bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 underline' : 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/30'}`}
               >KEGIATAN</button>
               <span className="text-gray-300 dark:text-gray-600">|</span>
-              <button 
+              <button
                 onClick={() => { setActiveLevelFilter('Sub Kegiatan'); setActiveLevelFilterIndex(4); }}
                 className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${activeLevelFilter === 'Sub Kegiatan' ? 'bg-pink-100 dark:bg-pink-900/50 text-pink-600 dark:text-pink-400 underline' : 'text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/30'}`}
               >SUB KEGIATAN</button>
@@ -649,7 +649,7 @@ const DpaPage = () => {
               {activeLevelFilter !== 'all' && (
                 <>
                   <span className="text-gray-300 dark:text-gray-600 ml-1">|</span>
-                  <button 
+                  <button
                     onClick={() => {
                       setActiveLevelFilter('all');
                       setActiveLevelFilterIndex(0);
@@ -666,16 +666,16 @@ const DpaPage = () => {
               )}
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={() => handleOpenAddModal('add_bagian')}
               className="px-4 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors cursor-pointer shadow-md shadow-blue-500/20 flex items-center gap-2 whitespace-nowrap"
             >
               <Plus size={16} strokeWidth={2.5} />
               Tambah Bagian
             </button>
-            <button 
+            <button
               onClick={toggleExpandAll}
               className="px-4 py-2.5 text-sm font-semibold text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400 bg-transparent hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
             >
@@ -688,11 +688,11 @@ const DpaPage = () => {
         {activeLevelFilter === 'all' ? (
           <div className="flex flex-col w-full overflow-x-auto min-w-[800px] pb-4">
             {filteredTree.length > 0 ? filteredTree.map(node => (
-              <ExpandableRow 
-                key={node.id} 
-                node={node} 
-                level={0} 
-                forceExpandAll={forceExpandAll} 
+              <ExpandableRow
+                key={node.id}
+                node={node}
+                level={0}
+                forceExpandAll={forceExpandAll}
                 onEdit={handleEdit}
                 onAddChild={handleOpenAddModal}
                 onDelete={handleDelete}
@@ -735,14 +735,14 @@ const DpaPage = () => {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center justify-center gap-2">
-                        <button 
+                        <button
                           onClick={() => handleEdit(item)}
                           className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"
                           title="Edit"
                         >
                           <Pencil size={14} />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDelete(item.id, item.tipe || activeLevelFilter)}
                           className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
                           title="Hapus"
@@ -787,16 +787,16 @@ const DpaPage = () => {
                 )}
                 {getModalTitle()}
               </h3>
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
                 className="p-1.5 text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors cursor-pointer"
               >
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="p-6 overflow-y-auto max-h-[70vh] flex flex-col gap-6 custom-scrollbar">
-              
+
               {modalMode === 'edit' ? (
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col gap-1.5">
@@ -863,15 +863,15 @@ const DpaPage = () => {
               )}
 
             </div>
-            
+
             <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3 bg-gray-50 dark:bg-gray-900/50">
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
                 className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
               >
                 Batal
               </button>
-              <button 
+              <button
                 onClick={modalMode === 'edit' ? handleSaveEdit : handleSaveAdd}
                 disabled={modalMode === 'edit' ? !isEditFormValid : !isAddFormValid}
                 className={`px-6 py-2.5 text-sm font-bold text-white rounded-lg transition-colors shadow-sm ${(modalMode === 'edit' ? !isEditFormValid : !isAddFormValid) ? 'bg-blue-400 dark:bg-blue-500/50 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 cursor-pointer shadow-blue-500/20'}`}
