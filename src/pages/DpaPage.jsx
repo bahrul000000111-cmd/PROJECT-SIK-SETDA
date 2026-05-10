@@ -587,7 +587,7 @@ const DpaPage = () => {
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <img
-            src="https://www.google.com/url?sa=t&source=web&rct=j&url=https://gor.wikipedia.org/wiki/Berkas:Lambang_Kabupaten_Donggala.png&ved=2ahUKEwjsrejZ-a6UAxWwT2wGHR_gICkQjRx6BAgEEBY&opi=89978449&usg=AOvVaw3hNTUTz7hkgtMoPrR7EiCT"
+            src="https://www.google.com/imgres?q=png%20logo%20pemda%20donggala%20no%20latar%20belakang&imgurl=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2F3%2F34%2FLambang_Kabupaten_Donggala.png&imgrefurl=https%3A%2F%2Fgor.wikipedia.org%2Fwiki%2FBerkas%3ALambang_Kabupaten_Donggala.png&docid=xPktKPtf-5joFM&tbnid=cze5-QBRXBuXhM&w=300&h=356&hcb=2"
             alt="Logo Donggala"
             className="w-14 h-14 object-contain shrink-0"
           />
