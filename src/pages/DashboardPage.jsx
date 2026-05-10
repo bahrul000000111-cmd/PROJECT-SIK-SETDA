@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import { DpaContext } from '../context/DpaContext';
 
 import StatCard from '../components/StatCard';
 import EmptyState from '../components/EmptyState';
@@ -21,9 +22,11 @@ const DashboardPage = () => {
   const [activeStatTab, setActiveStatTab] = useState('Belanja');
   const { widgetVisibility } = useOutletContext();
 
-  const totalAnggaran = anggaranData.reduce((sum, item) => sum + item.totalAnggaran, 0);
+  const { dpaData } = useContext(DpaContext);
+
+  const totalAnggaranKeseluruhan = dpaData.reduce((sum, item) => sum + (item.totalAnggaran || 0), 0);
   const totalBelanja = belanjaData.reduce((sum, item) => sum + item.nilaiAngka, 0);
-  const saldo = totalAnggaran - totalBelanja;
+  const saldo = totalAnggaranKeseluruhan - totalBelanja;
 
   const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
 
@@ -62,7 +65,7 @@ const DashboardPage = () => {
             colorClass="text-blue-600 dark:text-blue-400" 
             bgColorClass="bg-blue-50 dark:bg-blue-900/30" 
             barColorClass="bg-blue-500" 
-            value={formatCurrency(totalAnggaran)}
+            value={formatCurrency(totalAnggaranKeseluruhan)}
           />
           <StatCard 
             title="Realisasi Anggaran" 
@@ -95,18 +98,18 @@ const DashboardPage = () => {
                 <h3 className="font-semibold text-gray-900 dark:text-white">Grafik Anggaran & Realisasi Per Bagian</h3>
               </div>
               <div className="flex-1 p-5 flex flex-col justify-center gap-6">
-                {anggaranData.map((data) => {
-                  const anggaran = data.totalAnggaran;
-                  const realisasi = belanjaPerBagian[data.bagian] || 0;
+                {dpaData.map((data) => {
+                  const anggaran = data.totalAnggaran || 0;
+                  const realisasi = belanjaPerBagian[data.uraian] || 0;
                   
-                  const maxVal = Math.max(...anggaranData.map(d => d.totalAnggaran));
+                  const maxVal = Math.max(...dpaData.map(d => d.totalAnggaran || 0));
                   const percentAnggaran = maxVal > 0 ? (anggaran / maxVal) * 100 : 0;
                   const percentRealisasi = maxVal > 0 ? (realisasi / maxVal) * 100 : 0;
 
                   return (
                     <div key={data.id} className="flex flex-col gap-2">
                       <div className="flex justify-between items-end">
-                        <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{data.bagian}</span>
+                        <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{data.uraian}</span>
                         <div className="text-xs text-gray-500 dark:text-gray-400 text-right">
                           <div>Anggaran: <span className="font-medium text-gray-700 dark:text-gray-300">{formatCurrency(anggaran)}</span></div>
                           <div>Realisasi: <span className="font-medium text-gray-700 dark:text-gray-300">{formatCurrency(realisasi)}</span></div>

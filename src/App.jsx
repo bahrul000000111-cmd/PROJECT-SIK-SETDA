@@ -9,11 +9,14 @@ import DpaPage from './pages/DpaPage';
 import LraPage from './pages/LraPage';
 import LraProgramPage from './pages/LraProgramPage';
 
+import { DpaProvider } from './context/DpaContext';
+
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<DashboardLayout />}>
+    <DpaProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<DashboardLayout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="pengguna" element={<PenggunaPage />} />
@@ -23,8 +26,9 @@ function App() {
           <Route path="lra" element={<LraPage />} />
           <Route path="lra-program" element={<LraProgramPage />} />
         </Route>
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </DpaProvider>
   );
 }
 

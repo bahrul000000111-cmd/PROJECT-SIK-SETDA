@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Shield, ChevronDown, ChevronRight, Folder, FileText, Activity, Pencil, Plus, X, ListTree, Banknote, MapPin } from 'lucide-react';
-import { dpaNestedData } from '../utils/dataStore';
+import { DpaContext, calculateTreeTotals } from '../context/DpaContext';
 
 const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
 
@@ -25,24 +25,7 @@ const CHILD_ADD_MAP = {
   'Sub Kegiatan': { label: 'Rincian Belanja', mode: 'add_rincian' },
 };
 
-const calculateTreeTotals = (tree) => {
-  return tree.map(node => {
-    const cloned = { ...node };
 
-    if (cloned.children) {
-      cloned.children = calculateTreeTotals(cloned.children);
-      const sum = cloned.children.reduce((acc, curr) => acc + (curr.totalAnggaran || 0), 0);
-      cloned.totalAnggaran = sum;
-      cloned.rencanaKas = sum;
-    } else if (cloned.rincianBelanja) {
-      const sum = cloned.rincianBelanja.reduce((acc, curr) => acc + (curr.total || curr.totalAnggaran || 0), 0);
-      cloned.totalAnggaran = sum;
-      cloned.rencanaKas = sum;
-    }
-
-    return cloned;
-  });
-};
 
 const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild }) => {
   const [isExpanded, setIsExpanded] = useState(forceExpandAll);
@@ -227,7 +210,7 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild }) 
 };
 
 const DpaPage = () => {
-  const [dpaData, setDpaData] = useState(dpaNestedData);
+  const { dpaData, setDpaData } = useContext(DpaContext);
   const [forceExpandAll, setForceExpandAll] = useState(false);
   
   // Modal State
