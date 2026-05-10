@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { Shield, ChevronDown, ChevronRight, Folder, FileText, Activity, Pencil, Plus, X, ListTree, Banknote, MapPin, Trash, RotateCcw } from 'lucide-react';
+import { Shield, ChevronDown, ChevronRight, Folder, FileText, Activity, Pencil, Plus, X, ListTree, Banknote, MapPin, Trash, RotateCcw, Search } from 'lucide-react';
 import { DpaContext, calculateTreeTotals } from '../context/DpaContext';
 
 const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
@@ -33,22 +33,16 @@ const LEVEL_ORDER = {
   'Rincian Belanja': 5
 };
 
-const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, onDelete, activeLevelFilter }) => {
+const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, onDelete, searchQuery }) => {
   const [isExpanded, setIsExpanded] = useState(forceExpandAll);
 
   React.useEffect(() => {
-    if (activeLevelFilter === 'all' || !activeLevelFilter) {
-      setIsExpanded(forceExpandAll);
+    if (searchQuery) {
+      setIsExpanded(true);
     } else {
-      const currentLevel = LEVEL_ORDER[node.tipe];
-      const targetLevel = LEVEL_ORDER[activeLevelFilter];
-      if (currentLevel < targetLevel) {
-        setIsExpanded(true);
-      } else {
-        setIsExpanded(false);
-      }
+      setIsExpanded(forceExpandAll);
     }
-  }, [activeLevelFilter, forceExpandAll, node.tipe]);
+  }, [searchQuery, forceExpandAll]);
 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
@@ -173,7 +167,7 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
       {isExpanded && node.children && (
         <div className="flex flex-col w-full bg-white dark:bg-gray-900 animate-in fade-in slide-in-from-top-2 duration-300">
           {node.children.map(child => (
-            <ExpandableRow key={child.id} node={child} level={level + 1} forceExpandAll={forceExpandAll} onEdit={onEdit} onAddChild={onAddChild} onDelete={onDelete} activeLevelFilter={activeLevelFilter} />
+            <ExpandableRow key={child.id} node={child} level={level + 1} forceExpandAll={forceExpandAll} onEdit={onEdit} onAddChild={onAddChild} onDelete={onDelete} searchQuery={searchQuery} />
           ))}
         </div>
       )}
@@ -246,6 +240,8 @@ const DpaPage = () => {
   const { dpaData, setDpaData } = useContext(DpaContext);
   const [forceExpandAll, setForceExpandAll] = useState(false);
   const [activeLevelFilter, setActiveLevelFilter] = useState('all');
+  const [activeLevelFilterIndex, setActiveLevelFilterIndex] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -274,6 +270,82 @@ const DpaPage = () => {
   const toggleExpandAll = () => {
     setForceExpandAll(!forceExpandAll);
   };
+
+  const getSearchFilteredTree = (tree, query) => {
+    if (!query) return tree;
+    const lowerQuery = query.toLowerCase();
+
+    return tree.map(node => {
+      const cloned = { ...node };
+      let isMatch = (cloned.kode || '').toLowerCase().includes(lowerQuery) || (cloned.uraian || '').toLowerCase().includes(lowerQuery);
+      
+      let filteredChildren = [];
+      if (cloned.children) {
+        filteredChildren = getSearchFilteredTree(cloned.children, query);
+      }
+      
+      let filteredRincian = [];
+      if (cloned.rincianBelanja) {
+        filteredRincian = cloned.rincianBelanja.filter(rb => 
+          (rb.kode || '').toLowerCase().includes(lowerQuery) || (rb.uraian || '').toLowerCase().includes(lowerQuery)
+        );
+      }
+      
+      if (isMatch || filteredChildren.length > 0 || filteredRincian.length > 0) {
+        cloned.children = cloned.children ? filteredChildren : cloned.children;
+        cloned.rincianBelanja = cloned.rincianBelanja ? filteredRincian : cloned.rincianBelanja;
+        return cloned;
+      }
+      return null;
+    }).filter(node => node !== null);
+  };
+
+  const getFlattenedFocusedLevelData = (tree, focusedIndex, query, currentDepth = 1, parentContext = []) => {
+    let result = [];
+    const lowerQuery = query ? query.toLowerCase() : '';
+
+    tree.forEach(node => {
+      if (currentDepth === focusedIndex) {
+        const isMatch = !lowerQuery || 
+                        (node.kode || '').toLowerCase().includes(lowerQuery) || 
+                        (node.uraian || '').toLowerCase().includes(lowerQuery);
+        if (isMatch) {
+          const contextString = parentContext.length > 0 
+            ? parentContext.map(p => `Parent ${p.tipe}: ${p.uraian}`).join(' | ') 
+            : 'Tidak ada induk';
+          
+          result.push({
+            ...node,
+            parentContextString: contextString
+          });
+        }
+      } else if (currentDepth < focusedIndex) {
+        const newContext = [...parentContext, { tipe: node.tipe, uraian: node.uraian }];
+        if (node.children) {
+          result = result.concat(getFlattenedFocusedLevelData(node.children, focusedIndex, query, currentDepth + 1, newContext));
+        } else if (node.rincianBelanja && currentDepth + 1 === focusedIndex) {
+           node.rincianBelanja.forEach(rb => {
+             const isMatch = !lowerQuery || 
+                             (rb.kode || '').toLowerCase().includes(lowerQuery) || 
+                             (rb.uraian || '').toLowerCase().includes(lowerQuery);
+             if (isMatch) {
+                const contextString = newContext.map(p => `Parent ${p.tipe}: ${p.uraian}`).join(' | ');
+                result.push({
+                  ...rb,
+                  tipe: 'Rincian Belanja',
+                  parentContextString: contextString
+                });
+             }
+           });
+        }
+      }
+    });
+
+    return result;
+  };
+
+  const filteredTree = activeLevelFilter === 'all' ? getSearchFilteredTree(dpaData, searchQuery) : [];
+  const flatData = activeLevelFilter !== 'all' ? getFlattenedFocusedLevelData(dpaData, activeLevelFilterIndex, searchQuery) : [];
 
   const deleteNode = (tree, id) => {
     return tree.filter(node => node.id !== id).map(node => {
@@ -540,43 +612,59 @@ const DpaPage = () => {
         
         {/* Action Bar */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50 dark:bg-gray-900/20">
-          <div className="flex items-center gap-2 text-sm font-bold tracking-wide flex-wrap">
-            <button 
-              onClick={() => setActiveLevelFilter(activeLevelFilter === 'Bagian' ? 'all' : 'Bagian')}
-              className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${activeLevelFilter === 'Bagian' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-400 underline' : 'text-blue-800 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30'}`}
-            >BAGIAN</button>
-            <span className="text-gray-300 dark:text-gray-600">|</span>
-            <button 
-              onClick={() => setActiveLevelFilter(activeLevelFilter === 'Program' ? 'all' : 'Program')}
-              className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${activeLevelFilter === 'Program' ? 'bg-teal-100 dark:bg-teal-900/50 text-teal-600 dark:text-teal-400 underline' : 'text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/30'}`}
-            >PROGRAM</button>
-            <span className="text-gray-300 dark:text-gray-600">|</span>
-            <button 
-              onClick={() => setActiveLevelFilter(activeLevelFilter === 'Kegiatan' ? 'all' : 'Kegiatan')}
-              className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${activeLevelFilter === 'Kegiatan' ? 'bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 underline' : 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/30'}`}
-            >KEGIATAN</button>
-            <span className="text-gray-300 dark:text-gray-600">|</span>
-            <button 
-              onClick={() => setActiveLevelFilter(activeLevelFilter === 'Sub Kegiatan' ? 'all' : 'Sub Kegiatan')}
-              className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${activeLevelFilter === 'Sub Kegiatan' ? 'bg-pink-100 dark:bg-pink-900/50 text-pink-600 dark:text-pink-400 underline' : 'text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/30'}`}
-            >SUB KEGIATAN</button>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <Search size={16} />
+              </span>
+              <input 
+                type="text"
+                placeholder="Cari Kode/Uraian DPA..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-4 py-2 w-64 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white transition-shadow"
+              />
+            </div>
+            <div className="flex items-center gap-2 text-sm font-bold tracking-wide">
+              <button 
+                onClick={() => { setActiveLevelFilter('Bagian'); setActiveLevelFilterIndex(1); }}
+                className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${activeLevelFilter === 'Bagian' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-400 underline' : 'text-blue-800 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30'}`}
+              >BAGIAN</button>
+              <span className="text-gray-300 dark:text-gray-600">|</span>
+              <button 
+                onClick={() => { setActiveLevelFilter('Program'); setActiveLevelFilterIndex(2); }}
+                className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${activeLevelFilter === 'Program' ? 'bg-teal-100 dark:bg-teal-900/50 text-teal-600 dark:text-teal-400 underline' : 'text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/30'}`}
+              >PROGRAM</button>
+              <span className="text-gray-300 dark:text-gray-600">|</span>
+              <button 
+                onClick={() => { setActiveLevelFilter('Kegiatan'); setActiveLevelFilterIndex(3); }}
+                className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${activeLevelFilter === 'Kegiatan' ? 'bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 underline' : 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/30'}`}
+              >KEGIATAN</button>
+              <span className="text-gray-300 dark:text-gray-600">|</span>
+              <button 
+                onClick={() => { setActiveLevelFilter('Sub Kegiatan'); setActiveLevelFilterIndex(4); }}
+                className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${activeLevelFilter === 'Sub Kegiatan' ? 'bg-pink-100 dark:bg-pink-900/50 text-pink-600 dark:text-pink-400 underline' : 'text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/30'}`}
+              >SUB KEGIATAN</button>
 
-            {activeLevelFilter !== 'all' && (
-              <>
-                <span className="text-gray-300 dark:text-gray-600 ml-1">|</span>
-                <button 
-                  onClick={() => {
-                    setActiveLevelFilter('all');
-                    setForceExpandAll(false);
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded transition-colors cursor-pointer text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800"
-                  title="Reset Filter"
-                >
-                  <RotateCcw size={14} />
-                  Reset Filter
-                </button>
-              </>
-            )}
+              {activeLevelFilter !== 'all' && (
+                <>
+                  <span className="text-gray-300 dark:text-gray-600 ml-1">|</span>
+                  <button 
+                    onClick={() => {
+                      setActiveLevelFilter('all');
+                      setActiveLevelFilterIndex(0);
+                      setSearchQuery('');
+                      setForceExpandAll(false);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded transition-colors cursor-pointer text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800"
+                    title="Reset Filter"
+                  >
+                    <RotateCcw size={14} />
+                    Reset Filter
+                  </button>
+                </>
+              )}
+            </div>
           </div>
           
           <div className="flex items-center gap-3">
@@ -596,21 +684,93 @@ const DpaPage = () => {
           </div>
         </div>
 
-        {/* Tree Table Body */}
-        <div className="flex flex-col w-full overflow-x-auto min-w-[800px] pb-4">
-          {dpaData.map(node => (
-            <ExpandableRow 
-              key={node.id} 
-              node={node} 
-              level={0} 
-              forceExpandAll={forceExpandAll} 
-              onEdit={handleEdit}
-              onAddChild={handleOpenAddModal}
-              onDelete={handleDelete}
-              activeLevelFilter={activeLevelFilter}
-            />
-          ))}
-        </div>
+        {/* Main Content Area */}
+        {activeLevelFilter === 'all' ? (
+          <div className="flex flex-col w-full overflow-x-auto min-w-[800px] pb-4">
+            {filteredTree.length > 0 ? filteredTree.map(node => (
+              <ExpandableRow 
+                key={node.id} 
+                node={node} 
+                level={0} 
+                forceExpandAll={forceExpandAll} 
+                onEdit={handleEdit}
+                onAddChild={handleOpenAddModal}
+                onDelete={handleDelete}
+                searchQuery={searchQuery}
+              />
+            )) : (
+              <div className="p-8 text-center text-gray-500 dark:text-gray-400">Tidak ada data ditemukan.</div>
+            )}
+          </div>
+        ) : (
+          <div className="w-full overflow-x-auto pb-4 animate-in fade-in zoom-in-95 duration-200">
+            <table className="w-full text-left border-collapse text-sm min-w-[1000px]">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                  <th className="px-4 py-3 font-medium w-1/3">Konteks Induk</th>
+                  <th className="px-4 py-3 font-medium w-32">Kode</th>
+                  <th className="px-4 py-3 font-medium flex-1">Uraian {activeLevelFilter}</th>
+                  <th className="px-4 py-3 font-medium text-right w-48">Total Anggaran</th>
+                  <th className="px-4 py-3 font-medium text-center w-32">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {flatData.length > 0 ? flatData.map(item => (
+                  <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors bg-white dark:bg-gray-900 group">
+                    <td className="px-4 py-4">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 break-words leading-relaxed max-w-sm">
+                        {item.parentContextString}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 font-medium text-gray-700 dark:text-gray-300">
+                      <span className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-2 py-0.5 rounded text-xs">
+                        {item.kode || '-'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      {item.uraian}
+                    </td>
+                    <td className="px-4 py-4 text-right font-bold text-gray-900 dark:text-white">
+                      {formatCurrency(item.totalAnggaran || item.total || 0)}
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <button 
+                          onClick={() => handleEdit(item)}
+                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"
+                          title="Edit"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(item.id, item.tipe || activeLevelFilter)}
+                          className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                          title="Hapus"
+                        >
+                          <Trash size={14} />
+                        </button>
+                        {CHILD_ADD_MAP[item.tipe] && (
+                          <button
+                            onClick={() => handleOpenAddModal(CHILD_ADD_MAP[item.tipe].mode, item.id)}
+                            className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1 font-medium px-2 py-1 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                            title={CHILD_ADD_MAP[item.tipe].label}
+                          >
+                            <Plus size={12} />
+                            {CHILD_ADD_MAP[item.tipe].label}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-gray-500 dark:text-gray-400">Tidak ada data ditemukan.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
       </div>
 
