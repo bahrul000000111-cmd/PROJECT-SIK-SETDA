@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+/* Baris sakti untuk mengaktifkan Dark Mode manual di Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+@layer base {
+  body {
+    /* Tambahkan transisi dan warna khusus mode gelap di sini */
+    @apply bg-[#F9FAFB] dark:bg-gray-900 text-gray-900 dark:text-white font-sans transition-colors duration-300;
+  }
+}
