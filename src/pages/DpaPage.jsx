@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { Shield, ChevronDown, ChevronRight, Folder, FileText, Activity, Pencil, Plus, X, ListTree, Banknote, MapPin, Trash } from 'lucide-react';
+import { Shield, ChevronDown, ChevronRight, Folder, FileText, Activity, Pencil, Plus, X, ListTree, Banknote, MapPin, Trash, RotateCcw } from 'lucide-react';
 import { DpaContext, calculateTreeTotals } from '../context/DpaContext';
 
 const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
@@ -37,15 +37,22 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
   const [isExpanded, setIsExpanded] = useState(forceExpandAll);
 
   React.useEffect(() => {
-    setIsExpanded(forceExpandAll);
-  }, [forceExpandAll]);
+    if (activeLevelFilter === 'all' || !activeLevelFilter) {
+      setIsExpanded(forceExpandAll);
+    } else {
+      const currentLevel = LEVEL_ORDER[node.tipe];
+      const targetLevel = LEVEL_ORDER[activeLevelFilter];
+      if (currentLevel < targetLevel) {
+        setIsExpanded(true);
+      } else {
+        setIsExpanded(false);
+      }
+    }
+  }, [activeLevelFilter, forceExpandAll, node.tipe]);
 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
   };
-
-  const isFilteredOut = activeLevelFilter && activeLevelFilter !== 'all' && LEVEL_ORDER[node.tipe] >= LEVEL_ORDER[activeLevelFilter];
-  const effectivelyExpanded = isExpanded && !isFilteredOut;
 
   const getIndentClass = (lvl) => {
     switch(lvl) {
@@ -163,16 +170,16 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
         </div>
       </div>
 
-      {effectivelyExpanded && node.children && (
-        <div className="flex flex-col w-full bg-white dark:bg-gray-900">
+      {isExpanded && node.children && (
+        <div className="flex flex-col w-full bg-white dark:bg-gray-900 animate-in fade-in slide-in-from-top-2 duration-300">
           {node.children.map(child => (
             <ExpandableRow key={child.id} node={child} level={level + 1} forceExpandAll={forceExpandAll} onEdit={onEdit} onAddChild={onAddChild} onDelete={onDelete} activeLevelFilter={activeLevelFilter} />
           ))}
         </div>
       )}
 
-      {effectivelyExpanded && isSubKegiatan && node.rincianBelanja && (
-        <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 m-4 rounded-xl overflow-hidden shadow-sm">
+      {isExpanded && isSubKegiatan && node.rincianBelanja && (
+        <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 m-4 rounded-xl overflow-hidden shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="p-3 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
             <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
               <FileText size={16} className="text-blue-600 dark:text-blue-400"/>
@@ -553,6 +560,23 @@ const DpaPage = () => {
               onClick={() => setActiveLevelFilter(activeLevelFilter === 'Sub Kegiatan' ? 'all' : 'Sub Kegiatan')}
               className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${activeLevelFilter === 'Sub Kegiatan' ? 'bg-pink-100 dark:bg-pink-900/50 text-pink-600 dark:text-pink-400 underline' : 'text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/30'}`}
             >SUB KEGIATAN</button>
+
+            {activeLevelFilter !== 'all' && (
+              <>
+                <span className="text-gray-300 dark:text-gray-600 ml-1">|</span>
+                <button 
+                  onClick={() => {
+                    setActiveLevelFilter('all');
+                    setForceExpandAll(false);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded transition-colors cursor-pointer text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800"
+                  title="Reset Filter"
+                >
+                  <RotateCcw size={14} />
+                  Reset Filter
+                </button>
+              </>
+            )}
           </div>
           
           <div className="flex items-center gap-3">
