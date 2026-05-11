@@ -115,12 +115,9 @@ const Header = ({ isSidebarOpen, toggleSidebar, widgetVisibility, toggleWidget }
       <header className="fixed top-0 left-0 right-0 h-20 bg-white border-b border-gray-200 z-50 flex items-center shadow-sm transition-colors duration-300 dark:bg-gray-900 dark:border-gray-800">
         
         {/* Area Kiri: Identitas Aplikasi & Toggle */}
-        <div className={`h-full flex items-center px-4 border-r border-gray-200 dark:border-gray-800 shrink-0 transition-all duration-300 ${isSidebarOpen ? 'w-[260px] justify-start' : 'w-[80px] justify-center'}`}>
-          <button onClick={toggleSidebar} className="p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors cursor-pointer shrink-0">
-            <Menu size={20} strokeWidth={1.5} />
-          </button>
-          
-          <div className={`flex items-center gap-3 overflow-hidden transition-all duration-300 ${isSidebarOpen ? 'opacity-100 w-auto ml-3' : 'opacity-0 w-0 ml-0 hidden'}`}>
+        <div className={`h-full flex items-center px-4 border-r border-gray-200 dark:border-gray-800 shrink-0 transition-all duration-300 ${isSidebarOpen ? 'w-[260px] justify-between' : 'w-[80px] justify-center'}`}>
+          {/* Brand: Logo + Teks (tersembunyi saat collapsed) */}
+          <div className={`flex items-center gap-3 overflow-hidden transition-all duration-300 ${isSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'}`}>
             <img
               src={logoDonggala}
               alt="Logo Kab. Donggala"
@@ -138,7 +135,13 @@ const Header = ({ isSidebarOpen, toggleSidebar, widgetVisibility, toggleWidget }
               </span>
             </div>
           </div>
+
+          {/* Hamburger Toggle — selalu terlihat */}
+          <button onClick={toggleSidebar} className="p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors cursor-pointer shrink-0">
+            <Menu size={20} strokeWidth={1.5} />
+          </button>
         </div>
+
 
         {/* Area Kanan: Flex-1 */}
         <div className="flex-1 px-6 flex items-center justify-between h-full overflow-visible">
