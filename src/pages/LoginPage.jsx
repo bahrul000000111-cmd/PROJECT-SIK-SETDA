@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { Lock, User, Calendar, AlertCircle } from 'lucide-react';
+import logoDonggala from '../assets/images/logo-donggala.png';
 
 const LoginPage = () => {
   const [username, setUsername] = useState('');
@@ -32,7 +33,7 @@ const LoginPage = () => {
         <div className="p-8">
           <div className="flex flex-col items-center mb-8">
             <img 
-              src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Lambang_Kabupaten_Donggala.png/410px-Lambang_Kabupaten_Donggala.png" 
+              src={logoDonggala} 
               alt="Logo Donggala" 
               className="h-[50px] w-auto mb-4 drop-shadow-md"
             />

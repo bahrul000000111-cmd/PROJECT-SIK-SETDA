@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import logoDonggala from '../assets/images/logo-donggala.png';
 import { 
   LayoutDashboard, 
   Users, 
@@ -47,7 +48,7 @@ const Sidebar = ({ isSidebarOpen }) => {
         {/* Identitas Utama Aplikasi — terpusat di sini saja */}
         <div className="flex items-center gap-3 px-3 py-4 mb-2 border-b border-gray-100 dark:border-gray-800">
           <img
-            src="https://upload.wikimedia.org/wikipedia/commons/8/87/Lambang_Kabupaten_Donggala.png"
+            src={logoDonggala}
             alt="Logo Kab. Donggala"
             className="w-10 h-10 object-contain shrink-0"
           />
