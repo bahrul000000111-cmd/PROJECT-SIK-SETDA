@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { Lock, User, Calendar, AlertCircle } from 'lucide-react';
+import { Lock, User, AlertCircle } from 'lucide-react';
 import logoDonggala from '../assets/images/logo-donggala.png';
 
 const LoginPage = () => {
@@ -96,11 +96,8 @@ const LoginPage = () => {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-            Belum punya akun?{' '}
-            <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
-              Daftar di sini
-            </Link>
+          <p className="mt-6 text-center text-xs text-gray-400 dark:text-gray-500">
+            Hubungi administrator untuk mendapatkan akses.
           </p>
         </div>
       </div>

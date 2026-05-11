@@ -8,7 +8,7 @@ export const AuthProvider = ({ children }) => {
   });
   
   const [selectedYear, setSelectedYear] = useState(() => {
-    return localStorage.getItem('selectedYear') || '2024';
+    return localStorage.getItem('selectedYear') || new Date().getFullYear().toString();
   });
 
   const [currentUser, setCurrentUser] = useState(() => {
@@ -16,27 +16,41 @@ export const AuthProvider = ({ children }) => {
     return user ? JSON.parse(user) : null;
   });
 
+  const [users, setUsersState] = useState(() => {
+    return JSON.parse(localStorage.getItem('users') || '[]');
+  });
+
+  const saveUsers = (updatedUsers) => {
+    setUsersState(updatedUsers);
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+  };
+
   const register = (userData) => {
-    const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    const userExists = existingUsers.some(u => u.username === userData.username);
-    
+    const userExists = users.some(u => u.username === userData.username);
     if (userExists) {
       return { success: false, message: 'Username sudah terdaftar!' };
     }
-    
-    existingUsers.push(userData);
-    localStorage.setItem('users', JSON.stringify(existingUsers));
-    return { success: true, message: 'Registrasi berhasil!' };
+    saveUsers([...users, userData]);
+    return { success: true, message: 'Akun berhasil ditambahkan!' };
+  };
+
+  const updateUser = (updatedUser) => {
+    const updated = users.map(u => u.username === updatedUser.username ? { ...u, ...updatedUser } : u);
+    saveUsers(updated);
+    return { success: true };
+  };
+
+  const deleteUser = (username) => {
+    saveUsers(users.filter(u => u.username !== username));
   };
 
   const login = (username, password) => {
     const defaultYear = new Date().getFullYear().toString();
-    const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    let user = existingUsers.find(u => u.username === username && u.password === password);
+    let user = users.find(u => u.username === username && u.password === password);
     
-    // Fallback default admin just in case testing is needed without register
+    // Fallback default admin
     if (!user && username === 'admin' && password === 'admin') {
-      user = { namaLengkap: 'Administrator', nip: '1234567890', username: 'admin', role: 'Admin', instansi: 'Sekretariat Daerah' };
+      user = { namaLengkap: 'Administrator', nip: '0000000000', username: 'admin', role: 'Admin', instansi: 'Sekretariat Daerah' };
     }
     
     if (user) {
@@ -59,7 +73,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, selectedYear, currentUser, register, login, logout, setSelectedYear }}>
+    <AuthContext.Provider value={{ isAuthenticated, selectedYear, currentUser, users, register, updateUser, deleteUser, login, logout, setSelectedYear }}>
       {children}
     </AuthContext.Provider>
   );

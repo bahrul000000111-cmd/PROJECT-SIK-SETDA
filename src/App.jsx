@@ -9,7 +9,7 @@ import DpaPage from './pages/DpaPage';
 import LraPage from './pages/LraPage';
 import LraProgramPage from './pages/LraProgramPage';
 import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
+import RegisterSpmPage from './pages/RegisterSpmPage';
 
 import { DpaProvider } from './context/DpaContext';
 import { AuthProvider } from './context/AuthContext';
@@ -21,7 +21,6 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
           <Route path="/" element={<DashboardLayout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
@@ -31,6 +30,7 @@ function App() {
           <Route path="arsip" element={<ArsipPage />} />
           <Route path="lra" element={<LraPage />} />
           <Route path="lra-program" element={<LraProgramPage />} />
+          <Route path="register-spm" element={<RegisterSpmPage />} />
         </Route>
         </Routes>
       </BrowserRouter>

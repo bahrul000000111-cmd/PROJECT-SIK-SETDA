@@ -8,6 +8,7 @@ import {
   Archive, 
   FileText,
   BarChart3,
+  ClipboardList,
   ChevronRight
 } from 'lucide-react';
 
@@ -58,6 +59,7 @@ const Sidebar = ({ isSidebarOpen }) => {
           <SidebarHeader title="Laporan" isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={FileText} label="LRA" to="/lra" isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={BarChart3} label="LRA Perprogram" to="/lra-program" isSidebarOpen={isSidebarOpen} />
+          <SidebarItem icon={ClipboardList} label="Register SPM" to="/register-spm" isSidebarOpen={isSidebarOpen} />
         </nav>
       </div>
     </aside>
