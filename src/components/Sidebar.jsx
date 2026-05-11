@@ -44,6 +44,16 @@ const Sidebar = ({ isSidebarOpen }) => {
   return (
     <aside className={`fixed top-20 left-0 bottom-0 w-[260px] bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col z-40 overflow-hidden shadow-[1px_0_10px_rgba(0,0,0,0.02)] transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+        {/* Mobile / Alternative Branding (Top of Sidebar) */}
+        <div className="flex items-center gap-3 mb-6 px-3">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Lambang_Kabupaten_Donggala.png/410px-Lambang_Kabupaten_Donggala.png" alt="Logo" className="h-[45px] w-auto shrink-0" />
+          <div className="flex flex-col">
+            <span className="font-bold text-sm tracking-tight text-gray-900 dark:text-white" style={{ fontFamily: 'Urbanist, Inter, sans-serif' }}>SIK SETDA</span>
+            <span className="text-[9px] text-gray-500 font-medium leading-tight">
+              Sistem Informasi Keuangan<br/>Setda Kab. Donggala
+            </span>
+          </div>
+        </div>
         <nav>
           <SidebarItem icon={LayoutDashboard} label="Dashboard" to="/dashboard" />
           <SidebarItem icon={Users} label="Pengguna" to="/pengguna" hasChevron />

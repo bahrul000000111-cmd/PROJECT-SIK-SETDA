@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Menu, Layout, Moon, Sun, Maximize, Minimize, RefreshCw, ChevronDown, Shield, User, Settings, LogOut, X } from 'lucide-react';
+import { AuthContext } from '../context/AuthContext';
 
-const Navbar = ({ isSidebarOpen, toggleSidebar, widgetVisibility, toggleWidget }) => {
+const Header = ({ isSidebarOpen, toggleSidebar, widgetVisibility, toggleWidget }) => {
   const [greeting, setGreeting] = useState('');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLayoutDrawerOpen, setIsLayoutDrawerOpen] = useState(false);
   const profileRef = useRef(null);
+  const { selectedYear } = useContext(AuthContext);
 
   const currentUser = {
     nama: "Bahrul Ulum",
@@ -106,17 +108,14 @@ const Navbar = ({ isSidebarOpen, toggleSidebar, widgetVisibility, toggleWidget }
         {/* Area Kiri: Lebar Dinamis */}
         <div className={`h-full flex items-center px-4 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 ${isSidebarOpen ? 'w-[260px] justify-between' : 'w-[70px] justify-center'}`}>
           {isSidebarOpen && (
-            <div className="flex flex-col overflow-hidden whitespace-nowrap">
-              <div className="flex items-center gap-2">
-                <div className="flex -space-x-1">
-                  <div className="w-5 h-5 bg-blue-600 rounded-sm transform rotate-45"></div>
-                  <div className="w-5 h-5 bg-yellow-400 rounded-sm transform rotate-45"></div>
-                </div>
-                <span className="font-bold text-2xl tracking-tight text-gray-900 dark:text-white">SIPD</span>
+            <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Lambang_Kabupaten_Donggala.png/410px-Lambang_Kabupaten_Donggala.png" alt="Logo" className="h-[40px] w-auto object-contain shrink-0" />
+              <div className="flex flex-col overflow-hidden">
+                <span className="font-bold text-sm tracking-tight text-gray-900 dark:text-white truncate" style={{ fontFamily: 'Urbanist, Inter, sans-serif' }}>SIK SETDA</span>
+                <span className="text-[9px] text-gray-500 font-medium leading-tight whitespace-normal line-clamp-2" style={{ lineHeight: '1.2' }}>
+                  Sistem Informasi Keuangan<br/>Setda Kab. Donggala
+                </span>
               </div>
-              <span className="text-[9px] text-gray-500 font-medium leading-tight mt-0.5">
-                Sistem Informasi<br/>Pemerintahan Daerah
-              </span>
             </div>
           )}
           <button onClick={toggleSidebar} className="p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors cursor-pointer shrink-0">
@@ -142,8 +141,8 @@ const Navbar = ({ isSidebarOpen, toggleSidebar, widgetVisibility, toggleWidget }
               <span className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-transparent dark:border-gray-700 text-[10px] font-medium px-2 py-0.5 rounded-md transition-colors duration-300">
                 NIP: {currentUser.nip}
               </span>
-              <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-800 transition-colors duration-300">
-                Tahun {currentUser.tahun}
+              <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold px-3 py-1 rounded-md border border-blue-100 dark:border-blue-800 transition-colors duration-300 flex items-center">
+                SIK SETDA Tahun {selectedYear}
               </span>
             </div>
           </div>
@@ -258,4 +257,4 @@ const Navbar = ({ isSidebarOpen, toggleSidebar, widgetVisibility, toggleWidget }
   );
 };
 
-export default Navbar;
+export default Header;

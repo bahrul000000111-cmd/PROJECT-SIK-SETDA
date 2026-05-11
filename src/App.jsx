@@ -8,14 +8,20 @@ import PenggunaPage from './pages/PenggunaPage';
 import DpaPage from './pages/DpaPage';
 import LraPage from './pages/LraPage';
 import LraProgramPage from './pages/LraProgramPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 
 import { DpaProvider } from './context/DpaContext';
+import { AuthProvider } from './context/AuthContext';
 
 function App() {
   return (
-    <DpaProvider>
+    <AuthProvider>
+      <DpaProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="/" element={<DashboardLayout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
@@ -29,6 +35,7 @@ function App() {
         </Routes>
       </BrowserRouter>
     </DpaProvider>
+    </AuthProvider>
   );
 }
 
