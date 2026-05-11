@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { Layout, Moon, Sun, Maximize, Minimize, RefreshCw, ChevronDown, Shield, User, Settings, LogOut, X } from 'lucide-react';
+import { Menu, Layout, Moon, Sun, Maximize, Minimize, RefreshCw, ChevronDown, Shield, User, Settings, LogOut, X } from 'lucide-react';
+import logoDonggala from '../assets/images/logo-donggala.png';
 import { AuthContext } from '../context/AuthContext';
 
-const Header = ({ isSidebarOpen, widgetVisibility, toggleWidget }) => {
+const Header = ({ isSidebarOpen, toggleSidebar, widgetVisibility, toggleWidget }) => {
   const [greeting, setGreeting] = useState('');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -105,9 +106,30 @@ const Header = ({ isSidebarOpen, widgetVisibility, toggleWidget }) => {
     <>
       <header className="fixed top-0 left-0 right-0 h-20 bg-white border-b border-gray-200 z-50 flex items-center shadow-sm transition-colors duration-300 dark:bg-gray-900 dark:border-gray-800">
         
-        {/* Area Kiri: Kosong (Kendali pindah ke Sidebar) */}
-        <div className="h-full flex items-center justify-center px-4 border-r border-gray-200 dark:border-gray-800 w-[70px] shrink-0">
-          {/* Tombol Hamburger telah dipindah ke Sidebar.jsx */}
+        {/* Area Kiri: Identitas Aplikasi & Toggle */}
+        <div className={`h-full flex items-center px-4 border-r border-gray-200 dark:border-gray-800 shrink-0 transition-all duration-300 ${isSidebarOpen ? 'w-[260px] justify-start' : 'w-[80px] justify-center'}`}>
+          <button onClick={toggleSidebar} className="p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors cursor-pointer shrink-0">
+            <Menu size={20} strokeWidth={1.5} />
+          </button>
+          
+          <div className={`flex items-center gap-3 overflow-hidden transition-all duration-300 ${isSidebarOpen ? 'opacity-100 w-auto ml-3' : 'opacity-0 w-0 ml-0 hidden'}`}>
+            <img
+              src={logoDonggala}
+              alt="Logo Kab. Donggala"
+              className="w-9 h-9 object-contain shrink-0"
+            />
+            <div className="flex flex-col min-w-0">
+              <span
+                className="font-bold text-base tracking-tight text-gray-900 dark:text-white leading-none"
+                style={{ fontFamily: 'Urbanist, Inter, sans-serif' }}
+              >
+                SIK SETDA
+              </span>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500 leading-tight mt-0.5 whitespace-nowrap">
+                Sistem Informasi Keuangan<br />Setda Kab. Donggala
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Area Kanan: Flex-1 */}

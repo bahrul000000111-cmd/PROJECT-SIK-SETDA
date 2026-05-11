@@ -1,6 +1,5 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import logoDonggala from '../assets/images/logo-donggala.png';
 import { 
   LayoutDashboard, 
   Users, 
@@ -9,8 +8,7 @@ import {
   Archive, 
   FileText,
   BarChart3,
-  ChevronRight,
-  Menu
+  ChevronRight
 } from 'lucide-react';
 
 const SidebarItem = ({ icon: Icon, label, to, hasChevron, isSidebarOpen }) => {
@@ -42,40 +40,10 @@ const SidebarHeader = ({ title, isSidebarOpen }) => (
   </div>
 );
 
-const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
+const Sidebar = ({ isSidebarOpen }) => {
   return (
     <aside className={`fixed top-20 left-0 bottom-0 ${isSidebarOpen ? 'w-[260px] translate-x-0' : 'w-[80px] -translate-x-full md:translate-x-0'} bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col z-40 overflow-hidden shadow-[1px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300`}>
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {/* Top Section Sidebar (Header Sidebar) */}
-        <div className="flex items-center justify-between p-4 mb-2 border-b border-gray-100 dark:border-gray-800">
-          {/* Kelompok KIRI (Brand) */}
-          <div className="flex items-center gap-3">
-            <img
-              src={logoDonggala}
-              alt="Logo Kab. Donggala"
-              className="w-10 h-10 object-contain shrink-0"
-            />
-            <div className={`flex flex-col min-w-0 transition-opacity duration-300 ${!isSidebarOpen ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
-              <span
-                className="font-bold text-base tracking-tight text-gray-900 dark:text-white leading-none"
-                style={{ fontFamily: 'Urbanist, Inter, sans-serif' }}
-              >
-                SIK SETDA
-              </span>
-              <span className="text-xs text-gray-400 dark:text-gray-500 leading-tight mt-0.5 whitespace-nowrap">
-                Sistem Informasi Keuangan<br />Setda Kab. Donggala
-              </span>
-            </div>
-          </div>
-
-          {/* Kelompok KANAN (Toggle) */}
-          <button 
-            onClick={toggleSidebar}
-            className="p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors cursor-pointer shrink-0"
-          >
-            <Menu size={20} strokeWidth={1.5} />
-          </button>
-        </div>
+      <div className="flex-1 overflow-y-auto custom-scrollbar pt-4">
         <nav className="px-4">
           <SidebarItem icon={LayoutDashboard} label="Dashboard" to="/dashboard" isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={Users} label="Pengguna" to="/pengguna" hasChevron isSidebarOpen={isSidebarOpen} />
