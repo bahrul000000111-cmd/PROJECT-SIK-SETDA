@@ -25,8 +25,8 @@ const DashboardLayout = () => {
     <div className="min-h-screen bg-[#F9FAFB] dark:bg-gray-900 transition-colors duration-300 flex flex-col font-sans">
       <Header isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} widgetVisibility={widgetVisibility} toggleWidget={toggleWidget} />
       <div className="flex flex-1 pt-20">
-        <Sidebar isSidebarOpen={isSidebarOpen} />
-        <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-[260px]' : 'ml-0'} p-6 lg:p-8 overflow-y-auto`}>
+        <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+        <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-[260px]' : 'ml-[80px]'} p-6 lg:p-8 overflow-y-auto`}>
           <div className="max-w-7xl mx-auto">
             <Outlet context={{ widgetVisibility }} />
           </div>
