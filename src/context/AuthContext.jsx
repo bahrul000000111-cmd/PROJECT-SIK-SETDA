@@ -15,6 +15,20 @@ const safeGet = (key, fallback) => {
   }
 };
 
+// ─── Akun Default (Seed) ──────────────────────────────────────────────────────
+// Digunakan sebagai fallback ketika localStorage kosong (perangkat/browser baru).
+const DEFAULT_USERS = [
+  {
+    id: 'admin-001',
+    namaLengkap: 'Hapsa, SE',
+    nip: '197001012000122001',
+    role: 'Admin',
+    instansi: 'Sekretariat Daerah',
+    username: 'Hapsa',
+    password: '12345678',
+  },
+];
+
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem('isAuthenticated') === 'true';
@@ -26,7 +40,7 @@ export const AuthProvider = ({ children }) => {
 
   const [currentUser, setCurrentUser] = useState(() => safeGet('currentUser', null));
 
-  const [users, setUsersState] = useState(() => safeGet('users', []));
+  const [users, setUsersState] = useState(() => safeGet('users', DEFAULT_USERS));
 
   const saveUsers = (updatedUsers) => {
     setUsersState(updatedUsers);
