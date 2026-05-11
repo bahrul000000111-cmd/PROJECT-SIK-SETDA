@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { Menu, Layout, Moon, Sun, Maximize, Minimize, RefreshCw, ChevronDown, Shield, User, Settings, LogOut, X } from 'lucide-react';
+import { Layout, Moon, Sun, Maximize, Minimize, RefreshCw, ChevronDown, Shield, User, Settings, LogOut, X } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 
-const Header = ({ isSidebarOpen, toggleSidebar, widgetVisibility, toggleWidget }) => {
+const Header = ({ isSidebarOpen, widgetVisibility, toggleWidget }) => {
   const [greeting, setGreeting] = useState('');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -105,11 +105,9 @@ const Header = ({ isSidebarOpen, toggleSidebar, widgetVisibility, toggleWidget }
     <>
       <header className="fixed top-0 left-0 right-0 h-20 bg-white border-b border-gray-200 z-50 flex items-center shadow-sm transition-colors duration-300 dark:bg-gray-900 dark:border-gray-800">
         
-        {/* Area Kiri: Hanya Tombol Hamburger */}
+        {/* Area Kiri: Kosong (Kendali pindah ke Sidebar) */}
         <div className="h-full flex items-center justify-center px-4 border-r border-gray-200 dark:border-gray-800 w-[70px] shrink-0">
-          <button onClick={toggleSidebar} className="p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors cursor-pointer">
-            <Menu size={20} strokeWidth={1.5} />
-          </button>
+          {/* Tombol Hamburger telah dipindah ke Sidebar.jsx */}
         </div>
 
         {/* Area Kanan: Flex-1 */}
