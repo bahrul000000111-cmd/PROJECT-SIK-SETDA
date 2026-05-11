@@ -2,6 +2,19 @@ import React, { createContext, useState } from 'react';
 
 export const AuthContext = createContext();
 
+// ─── Safe localStorage Helper ─────────────────────────────────────────────────
+const safeGet = (key, fallback) => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null || raw === undefined) return fallback;
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error(`[AuthContext] localStorage parse error for key "${key}":`, e);
+    localStorage.removeItem(key); // hapus data corrupt
+    return fallback;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem('isAuthenticated') === 'true';
@@ -11,14 +24,9 @@ export const AuthProvider = ({ children }) => {
     return localStorage.getItem('selectedYear') || new Date().getFullYear().toString();
   });
 
-  const [currentUser, setCurrentUser] = useState(() => {
-    const user = localStorage.getItem('currentUser');
-    return user ? JSON.parse(user) : null;
-  });
+  const [currentUser, setCurrentUser] = useState(() => safeGet('currentUser', null));
 
-  const [users, setUsersState] = useState(() => {
-    return JSON.parse(localStorage.getItem('users') || '[]');
-  });
+  const [users, setUsersState] = useState(() => safeGet('users', []));
 
   const saveUsers = (updatedUsers) => {
     setUsersState(updatedUsers);

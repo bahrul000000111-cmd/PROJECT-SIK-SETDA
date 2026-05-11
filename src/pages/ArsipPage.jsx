@@ -36,7 +36,17 @@ const extractSubKegiatan = (nodes) => {
 
 // ─── Load/Save from localStorage ─────────────────────────────────────────────
 const STORAGE_KEY = 'arsipDokumen';
-const loadArsip = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+const loadArsip = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error('[ArsipPage] localStorage parse error for key "arsipDokumen":', e);
+    localStorage.removeItem(STORAGE_KEY); // hapus data corrupt
+    return [];
+  }
+};
 const saveArsip = (data) => localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 
 // ─── Main Component ───────────────────────────────────────────────────────────

@@ -26,8 +26,15 @@ export const DpaProvider = ({ children }) => {
   const [dpaData, setDpaData] = useState(() => calculateTreeTotals(dpaNestedData));
 
   const [transactions, setTransactionsState] = useState(() => {
-    const saved = localStorage.getItem('transactions');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('transactions');
+      if (!saved) return [];
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error('[DpaContext] localStorage parse error for key "transactions":', e);
+      localStorage.removeItem('transactions'); // hapus data corrupt
+      return [];
+    }
   });
 
   const setTransactions = (txs) => {
