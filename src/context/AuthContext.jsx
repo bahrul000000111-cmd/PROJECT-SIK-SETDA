@@ -29,22 +29,21 @@ export const AuthProvider = ({ children }) => {
     return { success: true, message: 'Registrasi berhasil!' };
   };
 
-  const login = (username, password, year) => {
+  const login = (username, password) => {
+    const defaultYear = new Date().getFullYear().toString();
     const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    // Jika belum ada user terdaftar (untuk testing awal), izinkan bypass atau harus daftar dulu.
-    // Di sini kita wajibkan ada di DB kecuali admin default:
     let user = existingUsers.find(u => u.username === username && u.password === password);
     
     // Fallback default admin just in case testing is needed without register
     if (!user && username === 'admin' && password === 'admin') {
-      user = { nama: 'Administrator', nip: '1234567890', username: 'admin' };
+      user = { namaLengkap: 'Administrator', nip: '1234567890', username: 'admin', role: 'Admin', instansi: 'Sekretariat Daerah' };
     }
     
     if (user) {
-      setSelectedYear(year);
+      setSelectedYear(defaultYear);
       setIsAuthenticated(true);
       setCurrentUser(user);
-      localStorage.setItem('selectedYear', year);
+      localStorage.setItem('selectedYear', defaultYear);
       localStorage.setItem('isAuthenticated', 'true');
       localStorage.setItem('currentUser', JSON.stringify(user));
       return { success: true };

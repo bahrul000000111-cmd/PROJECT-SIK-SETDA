@@ -7,7 +7,6 @@ import logoDonggala from '../assets/images/logo-donggala.png';
 const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [year, setYear] = useState('2024');
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { login } = useContext(AuthContext);
@@ -16,7 +15,7 @@ const LoginPage = () => {
     e.preventDefault();
     setError('');
     if (username && password) {
-      const result = login(username, password, year);
+      const result = login(username, password);
       if (result.success) {
         navigate('/dashboard');
       } else {
@@ -87,26 +86,7 @@ const LoginPage = () => {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Pilih Tahun Anggaran</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Calendar size={18} className="text-gray-400" />
-                </div>
-                <select
-                  value={year}
-                  onChange={(e) => setYear(e.target.value)}
-                  className="block w-full pl-10 pr-10 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all sm:text-sm appearance-none"
-                >
-                  <option value="2024">2024</option>
-                  <option value="2025">2025</option>
-                  <option value="2026">2026</option>
-                </select>
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                </div>
-              </div>
-            </div>
+
 
             <button
               type="submit"

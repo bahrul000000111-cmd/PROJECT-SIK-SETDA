@@ -10,14 +10,14 @@ const Header = ({ isSidebarOpen, toggleSidebar, widgetVisibility, toggleWidget }
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLayoutDrawerOpen, setIsLayoutDrawerOpen] = useState(false);
   const profileRef = useRef(null);
-  const { selectedYear } = useContext(AuthContext);
-
-  const currentUser = {
-    nama: "Bahrul Ulum",
-    role: "Pemeriksa", 
-    nip: "199001012026011001",
+  const { selectedYear, currentUser: contextUser } = useContext(AuthContext);
+  
+  const currentUser = contextUser || {
+    namaLengkap: "Pengguna",
+    role: "User", 
+    nip: "-",
     instansi: "Sekretariat Daerah",
-    tahun: "2026"
+    tahun: selectedYear
   };
 
   useEffect(() => {
@@ -138,7 +138,7 @@ const Header = ({ isSidebarOpen, toggleSidebar, widgetVisibility, toggleWidget }
           {/* Kiri Kanan-Area: Sapaan & Deretan Badge */}
           <div className="flex flex-col justify-center gap-1.5">
             <h1 className="font-bold text-lg lg:text-xl text-gray-900 dark:text-white leading-none truncate transition-colors duration-300">
-              {greeting}
+              {greeting} {currentUser.namaLengkap || currentUser.nama || 'Pengguna'}
             </h1>
             <div className="flex items-center gap-2 flex-wrap">
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${roleColorClass}`}>
@@ -185,7 +185,7 @@ const Header = ({ isSidebarOpen, toggleSidebar, widgetVisibility, toggleWidget }
                 <div className="w-7 h-7 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full flex items-center justify-center text-yellow-500 transition-colors duration-300">
                   <Shield size={14} strokeWidth={2} />
                 </div>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:block transition-colors duration-300">{currentUser.nama}</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:block transition-colors duration-300">{currentUser.namaLengkap || currentUser.nama || 'Pengguna'}</span>
                 <ChevronDown size={14} strokeWidth={2} className="text-gray-500" />
               </button>
 
