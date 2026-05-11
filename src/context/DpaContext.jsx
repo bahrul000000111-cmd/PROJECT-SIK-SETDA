@@ -25,8 +25,26 @@ export const calculateTreeTotals = (tree) => {
 export const DpaProvider = ({ children }) => {
   const [dpaData, setDpaData] = useState(() => calculateTreeTotals(dpaNestedData));
 
+  const [transactions, setTransactionsState] = useState(() => {
+    const saved = localStorage.getItem('transactions');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const setTransactions = (txs) => {
+    setTransactionsState(txs);
+    localStorage.setItem('transactions', JSON.stringify(txs));
+  };
+
+  const addTransaction = (tx) => {
+    setTransactions(prev => [...prev, tx]);
+  };
+
+  const deleteTransaction = (id) => {
+    setTransactions(prev => prev.filter(t => t.id !== id));
+  };
+
   return (
-    <DpaContext.Provider value={{ dpaData, setDpaData }}>
+    <DpaContext.Provider value={{ dpaData, setDpaData, transactions, addTransaction, deleteTransaction }}>
       {children}
     </DpaContext.Provider>
   );

@@ -22,19 +22,14 @@ const DashboardPage = () => {
   const [activeStatTab, setActiveStatTab] = useState('Belanja');
   const { widgetVisibility } = useOutletContext();
 
-  const { dpaData } = useContext(DpaContext);
+  const { dpaData, transactions } = useContext(DpaContext);
 
   const totalAnggaranKeseluruhan = dpaData.reduce((sum, item) => sum + (item.totalAnggaran || 0), 0);
-  const totalBelanja = belanjaData.reduce((sum, item) => sum + item.nilaiAngka, 0);
+  const totalBelanja = transactions.reduce((sum, item) => sum + item.nominal, 0);
   const saldo = totalAnggaranKeseluruhan - totalBelanja;
+  const percentTerpakai = totalAnggaranKeseluruhan > 0 ? ((totalBelanja / totalAnggaranKeseluruhan) * 100).toFixed(1) : 0;
 
   const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
-
-  // Group belanja by bagian
-  const belanjaPerBagian = belanjaData.reduce((acc, curr) => {
-    acc[curr.bagian] = (acc[curr.bagian] || 0) + curr.nilaiAngka;
-    return acc;
-  }, {});
 
   return (
     <div className="flex flex-col gap-6 pb-10">
@@ -73,7 +68,12 @@ const DashboardPage = () => {
             colorClass="text-orange-600 dark:text-orange-400" 
             bgColorClass="bg-orange-50 dark:bg-orange-900/30" 
             barColorClass="bg-orange-500" 
-            value={formatCurrency(totalBelanja)}
+            value={
+              <div className="flex items-baseline gap-2">
+                <span>{formatCurrency(totalBelanja)}</span>
+                <span className="text-sm font-medium text-orange-600/80 dark:text-orange-400/80 tracking-normal">({percentTerpakai}%)</span>
+              </div>
+            }
           />
           <StatCard 
             title="Saldo (Sisa Anggaran)" 
@@ -100,7 +100,7 @@ const DashboardPage = () => {
               <div className="flex-1 p-5 flex flex-col justify-center gap-6">
                 {dpaData.map((data) => {
                   const anggaran = data.totalAnggaran || 0;
-                  const realisasi = belanjaPerBagian[data.uraian] || 0;
+                  const realisasi = transactions.filter(t => t.bagianId === data.id).reduce((sum, t) => sum + t.nominal, 0);
                   
                   const maxVal = Math.max(...dpaData.map(d => d.totalAnggaran || 0));
                   const percentAnggaran = maxVal > 0 ? (anggaran / maxVal) * 100 : 0;

@@ -105,20 +105,9 @@ const Header = ({ isSidebarOpen, toggleSidebar, widgetVisibility, toggleWidget }
     <>
       <header className="fixed top-0 left-0 right-0 h-20 bg-white border-b border-gray-200 z-50 flex items-center shadow-sm transition-colors duration-300 dark:bg-gray-900 dark:border-gray-800">
         
-        {/* Area Kiri: Lebar Dinamis */}
-        <div className={`h-full flex items-center px-4 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 ${isSidebarOpen ? 'w-[260px] justify-between' : 'w-[70px] justify-center'}`}>
-          {isSidebarOpen && (
-            <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Lambang_Kabupaten_Donggala.png/410px-Lambang_Kabupaten_Donggala.png" alt="Logo" className="h-[40px] w-auto object-contain shrink-0" />
-              <div className="flex flex-col overflow-hidden">
-                <span className="font-bold text-sm tracking-tight text-gray-900 dark:text-white truncate" style={{ fontFamily: 'Urbanist, Inter, sans-serif' }}>SIK SETDA</span>
-                <span className="text-[9px] text-gray-500 font-medium leading-tight whitespace-normal line-clamp-2" style={{ lineHeight: '1.2' }}>
-                  Sistem Informasi Keuangan<br/>Setda Kab. Donggala
-                </span>
-              </div>
-            </div>
-          )}
-          <button onClick={toggleSidebar} className="p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors cursor-pointer shrink-0">
+        {/* Area Kiri: Hanya Tombol Hamburger */}
+        <div className="h-full flex items-center justify-center px-4 border-r border-gray-200 dark:border-gray-800 w-[70px] shrink-0">
+          <button onClick={toggleSidebar} className="p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors cursor-pointer">
             <Menu size={20} strokeWidth={1.5} />
           </button>
         </div>

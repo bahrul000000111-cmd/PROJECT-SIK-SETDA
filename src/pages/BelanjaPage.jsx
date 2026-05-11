@@ -3,20 +3,22 @@ import { DpaContext } from '../context/DpaContext';
 import { Trash2, AlertCircle, Plus, Info, CheckCircle2 } from 'lucide-react';
 
 // Fungsi utilitas untuk ekstraksi Sub Kegiatan
-const extractSubKegiatan = (nodes) => {
+const extractSubKegiatan = (nodes, currentBagianId = null) => {
   let result = [];
   if (!nodes) return result;
   for (const node of nodes) {
+    const bagianId = node.tipe === 'Bagian' ? node.id : currentBagianId;
     if (node.tipe === 'Sub Kegiatan' && node.totalAnggaran > 0) {
       result.push({
         id: node.id,
         kode: node.kode,
         uraian: node.uraian,
-        totalAnggaran: node.totalAnggaran
+        totalAnggaran: node.totalAnggaran,
+        bagianId: bagianId
       });
     }
     if (node.children) {
-      result = result.concat(extractSubKegiatan(node.children));
+      result = result.concat(extractSubKegiatan(node.children, bagianId));
     }
   }
   return result;
@@ -33,10 +35,9 @@ const formatRupiah = (angka) => {
 };
 
 const BelanjaPage = () => {
-  const { dpaData } = useContext(DpaContext);
+  const { dpaData, transactions, addTransaction, deleteTransaction } = useContext(DpaContext);
   const subKegiatanList = useMemo(() => extractSubKegiatan(dpaData), [dpaData]);
 
-  const [transactions, setTransactions] = useState([]);
   const [form, setForm] = useState({
     tanggal: '',
     subKegiatanId: '',
@@ -85,12 +86,13 @@ const BelanjaPage = () => {
       id: Date.now(),
       tanggal: form.tanggal,
       subKegiatanId: form.subKegiatanId,
+      bagianId: selectedSubKegiatan.bagianId,
       namaSubKegiatan: `${selectedSubKegiatan.kode} - ${selectedSubKegiatan.uraian}`,
       uraian: form.uraian,
       nominal: numericNominal
     };
 
-    setTransactions((prev) => [...prev, newTx]);
+    addTransaction(newTx);
     setForm({
       tanggal: '',
       subKegiatanId: '',
@@ -100,7 +102,7 @@ const BelanjaPage = () => {
   };
 
   const handleDelete = (id) => {
-    setTransactions((prev) => prev.filter((t) => t.id !== id));
+    deleteTransaction(id);
   };
 
   const totalSeluruhBelanja = transactions.reduce((sum, t) => sum + t.nominal, 0);
