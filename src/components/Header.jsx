@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { Menu, Layout, Moon, Sun, Maximize, Minimize, RefreshCw, ChevronDown, Shield, User, Settings, LogOut, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Menu, Layout, Moon, Sun, Maximize, Minimize, RefreshCw, ChevronDown, Shield, LogOut, X } from 'lucide-react';
 import logoDonggala from '../assets/images/logo-donggala.png';
 import { AuthContext } from '../context/AuthContext';
 
@@ -10,7 +11,8 @@ const Header = ({ isSidebarOpen, toggleSidebar, widgetVisibility, toggleWidget }
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLayoutDrawerOpen, setIsLayoutDrawerOpen] = useState(false);
   const profileRef = useRef(null);
-  const { selectedYear, currentUser: contextUser } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const { selectedYear, currentUser: contextUser, logout } = useContext(AuthContext);
   
   const currentUser = contextUser || {
     namaLengkap: "Pengguna",
@@ -96,6 +98,12 @@ const Header = ({ isSidebarOpen, toggleSidebar, widgetVisibility, toggleWidget }
 
   const handleRefresh = () => {
     window.location.reload();
+  };
+
+  const handleLogout = () => {
+    setIsProfileOpen(false);
+    logout();
+    navigate('/login');
   };
 
   const roleColorClass = currentUser.role === "Pemeriksa" 
@@ -189,22 +197,22 @@ const Header = ({ isSidebarOpen, toggleSidebar, widgetVisibility, toggleWidget }
                 <ChevronDown size={14} strokeWidth={2} className="text-gray-500" />
               </button>
 
-              {/* Dropdown Menu */}
+              {/* Dropdown Menu — Logout Only */}
               {isProfileOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+                <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+                  {/* Info User */}
+                  <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{currentUser.namaLengkap || currentUser.nama || 'Pengguna'}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{currentUser.role || 'User'} · {currentUser.instansi || '-'}</p>
+                  </div>
+                  {/* Logout */}
                   <div className="py-1">
-                  <button onClick={() => setIsProfileOpen(false)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer">
-                    <User size={16} className="text-gray-400" />
-                    Profil Saya
-                  </button>
-                  <button onClick={() => setIsProfileOpen(false)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer">
-                    <Settings size={16} className="text-gray-400" />
-                    Pengaturan
-                  </button>
-                  <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
-                    <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-700 transition-colors cursor-pointer"
+                    >
                       <LogOut size={16} />
-                      Logout
+                      Keluar dari Sistem
                     </button>
                   </div>
                 </div>
