@@ -5,9 +5,9 @@ import {
   Users, 
   Wallet,
   ShoppingBag, 
-  Archive, 
+  FolderOpen, 
   FileText,
-  BarChart3,
+  Activity,
   ClipboardList,
   ChevronRight
 } from 'lucide-react';
@@ -54,11 +54,11 @@ const Sidebar = ({ isSidebarOpen }) => {
           
           <SidebarHeader title="Penatausahaan" isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={ShoppingBag} label="Belanja" to="/belanja" hasChevron isSidebarOpen={isSidebarOpen} />
-          <SidebarItem icon={Archive} label="Arsip" to="/arsip" hasChevron isSidebarOpen={isSidebarOpen} />
+          <SidebarItem icon={FolderOpen} label="Arsip" to="/arsip" hasChevron isSidebarOpen={isSidebarOpen} />
           
           <SidebarHeader title="Laporan" isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={FileText} label="LRA" to="/lra" isSidebarOpen={isSidebarOpen} />
-          <SidebarItem icon={BarChart3} label="LRA Perprogram" to="/lra-program" isSidebarOpen={isSidebarOpen} />
+          <SidebarItem icon={Activity} label="LRA Perprogram" to="/lra-program" isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={ClipboardList} label="Register SPM" to="/register-spm" isSidebarOpen={isSidebarOpen} />
         </nav>
       </div>
