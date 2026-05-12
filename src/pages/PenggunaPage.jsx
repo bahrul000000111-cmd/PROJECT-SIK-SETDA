@@ -4,7 +4,7 @@ import { Navigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, KeyRound, X, Users, Shield, Search, AlertTriangle } from 'lucide-react';
 
 // Admin tidak boleh membuat akun Admin baru via UI (prinsip keamanan otoritas utama)
-const JABATAN_OPTIONS = ['Pengguna/Staf', 'Pemeriksa'];
+const JABATAN_OPTIONS = ['Pengguna/Staf', 'Bendahara', 'Pemeriksa'];
 
 const initialFormState = {
   nip: '',

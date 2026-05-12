@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useContext } from 'react';
 import DashboardLayout from './layouts/DashboardLayout';
 import DashboardPage from './pages/DashboardPage';
@@ -11,6 +11,7 @@ import LraPage from './pages/LraPage';
 import LraProgramPage from './pages/LraProgramPage';
 import LoginPage from './pages/LoginPage';
 import RegisterSpmPage from './pages/RegisterSpmPage';
+import RegisterPajakPage from './pages/RegisterPajakPage';
 
 import { DpaProvider } from './context/DpaContext';
 import { AuthProvider, AuthContext } from './context/AuthContext';
@@ -22,7 +23,6 @@ const ProtectedRoute = ({ allowedRoles, children }) => {
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   if (allowedRoles && !allowedRoles.includes(currentUser?.role)) {
-    // Jika role tidak punya izin, redirect ke dashboard
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -45,6 +45,7 @@ function App() {
               <Route path="lra" element={<LraPage />} />
               <Route path="lra-program" element={<LraProgramPage />} />
               <Route path="register-spm" element={<RegisterSpmPage />} />
+              <Route path="register-pajak" element={<RegisterPajakPage />} />
 
               {/* Rute yang hanya boleh diakses Admin */}
               <Route

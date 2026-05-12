@@ -3,13 +3,13 @@ import { NavLink } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { 
   LayoutDashboard, 
-  Users, 
   Wallet,
   ShoppingBag, 
   FolderOpen, 
   FileText,
   Activity,
   ClipboardList,
+  Landmark,
   ChevronRight,
   ShieldCheck
 } from 'lucide-react';
@@ -46,8 +46,9 @@ const SidebarHeader = ({ title, isSidebarOpen }) => (
 );
 
 // ─── Role Constants ────────────────────────────────────────────────────────────
-const ROLE_ADMIN    = 'Admin';
-const ROLE_PENGGUNA = 'Pengguna/Staf';
+const ROLE_ADMIN     = 'Admin';
+const ROLE_PENGGUNA  = 'Pengguna/Staf';
+const ROLE_BENDAHARA = 'Bendahara';
 const ROLE_PEMERIKSA = 'Pemeriksa';
 
 // ─── Main Sidebar ──────────────────────────────────────────────────────────────
@@ -55,9 +56,13 @@ const Sidebar = ({ isSidebarOpen }) => {
   const { currentUser } = useContext(AuthContext);
   const role = currentUser?.role || ROLE_PENGGUNA;
 
-  const isAdmin    = role === ROLE_ADMIN;
-  const isPengguna = role === ROLE_PENGGUNA;
+  const isAdmin     = role === ROLE_ADMIN;
+  const isPengguna  = role === ROLE_PENGGUNA;
+  const isBendahara = role === ROLE_BENDAHARA;
   const isPemeriksa = role === ROLE_PEMERIKSA;
+
+  // Roles yang bisa input transaksi
+  const canInput = isAdmin || isPengguna || isBendahara;
 
   return (
     <aside className={`fixed top-20 left-0 bottom-0 ${isSidebarOpen ? 'w-[260px] translate-x-0' : 'w-[80px] -translate-x-full md:translate-x-0'} bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col z-40 overflow-hidden shadow-[1px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300`}>
@@ -66,13 +71,7 @@ const Sidebar = ({ isSidebarOpen }) => {
 
           {/* ── ADMIN MENU: Kelola Pengguna (only Admin) ─── */}
           {isAdmin && (
-            <SidebarItem
-              icon={ShieldCheck}
-              label="Kelola Pengguna"
-              to="/kelola-pengguna"
-              hasChevron
-              isSidebarOpen={isSidebarOpen}
-            />
+            <SidebarItem icon={ShieldCheck} label="Kelola Pengguna" to="/kelola-pengguna" hasChevron isSidebarOpen={isSidebarOpen} />
           )}
 
           {/* ── Dashboard: semua role ─── */}
@@ -85,19 +84,19 @@ const Sidebar = ({ isSidebarOpen }) => {
           {/* ── Penatausahaan ─── */}
           <SidebarHeader title="Penatausahaan" isSidebarOpen={isSidebarOpen} />
 
-          {/* Belanja: Admin & Pengguna/Staf saja (Pemeriksa tidak bisa input) */}
-          {(isAdmin || isPengguna) && (
+          {/* Input Belanja: Admin, Pengguna/Staf, Bendahara (Pemeriksa tidak bisa input) */}
+          {canInput && (
             <SidebarItem icon={ShoppingBag} label="Input Belanja" to="/belanja" hasChevron isSidebarOpen={isSidebarOpen} />
           )}
 
-          {/* Arsip: semua role */}
+          {/* Tambah Arsip: semua role */}
           <SidebarItem icon={FolderOpen} label="Tambah Arsip" to="/arsip" hasChevron isSidebarOpen={isSidebarOpen} />
 
           {/* ── Laporan ─── */}
           <SidebarHeader title="Laporan" isSidebarOpen={isSidebarOpen} />
 
-          {/* LRA: Admin & Pemeriksa (Pengguna/Staf tidak punya akses laporan LRA) */}
-          {(isAdmin || isPemeriksa) && (
+          {/* LRA: Admin, Bendahara & Pemeriksa */}
+          {(isAdmin || isBendahara || isPemeriksa) && (
             <>
               <SidebarItem icon={FileText} label="LRA" to="/lra" isSidebarOpen={isSidebarOpen} />
               <SidebarItem icon={Activity} label="LRA Perprogram" to="/lra-program" isSidebarOpen={isSidebarOpen} />
@@ -106,6 +105,9 @@ const Sidebar = ({ isSidebarOpen }) => {
 
           {/* Register SPM: semua role */}
           <SidebarItem icon={ClipboardList} label="Register SPM" to="/register-spm" isSidebarOpen={isSidebarOpen} />
+
+          {/* Register Pajak: semua role */}
+          <SidebarItem icon={Landmark} label="Register Pajak" to="/register-pajak" isSidebarOpen={isSidebarOpen} />
 
         </nav>
       </div>

@@ -77,10 +77,11 @@ const DashboardPage = () => {
   const { currentUser } = useContext(AuthContext);
 
   const role = currentUser?.role;
-  const isAdmin    = role === 'Admin';
-  const isPengguna = role === 'Pengguna/Staf';
+  const isAdmin     = role === 'Admin';
+  const isPengguna  = role === 'Pengguna/Staf';
+  const isBendahara = role === 'Bendahara';
   const isPemeriksa = role === 'Pemeriksa';
-  const canInput   = isAdmin || isPengguna;
+  const canInput    = isAdmin || isPengguna || isBendahara;
 
   // ── Kalkulasi Keuangan (dari data nyata) ──
   const totalAnggaran = useMemo(

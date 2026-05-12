@@ -45,6 +45,15 @@ const DEFAULT_USERS = [
     username: 'inspektur',
     password: '12345678',
   },
+  {
+    id: 'bendahara-001',
+    namaLengkap: 'Bendahara Pengeluaran',
+    nip: '198506152010011001',
+    role: 'Bendahara',
+    instansi: 'Sekretariat Daerah',
+    username: 'bendahara',
+    password: '12345678',
+  },
 ];
 
 export const AuthProvider = ({ children }) => {
