@@ -1,8 +1,10 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import { Navigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, KeyRound, X, Users, Shield, Search, AlertTriangle } from 'lucide-react';
 
-const JABATAN_OPTIONS = ['Admin', 'Pengguna/Staf', 'Bendahara', 'Pemeriksa'];
+// Admin tidak boleh membuat akun Admin baru via UI (prinsip keamanan otoritas utama)
+const JABATAN_OPTIONS = ['Pengguna/Staf', 'Pemeriksa'];
 
 const initialFormState = {
   nip: '',
@@ -14,7 +16,12 @@ const initialFormState = {
 };
 
 const PenggunaPage = () => {
-  const { users, register, updateUser, deleteUser } = useContext(AuthContext);
+  const { users, register, updateUser, deleteUser, currentUser } = useContext(AuthContext);
+
+  // Guard: hanya Admin yang boleh mengakses halaman ini
+  if (currentUser?.role !== 'Admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' | 'edit' | 'reset'
   const [form, setForm] = useState(initialFormState);
@@ -123,15 +130,15 @@ const PenggunaPage = () => {
       <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 font-medium">
         <span>Dashboard</span>
         <span>/</span>
-        <span className="text-gray-900 dark:text-white">Manajemen Pengguna</span>
+        <span className="text-gray-900 dark:text-white">Kelola Pengguna</span>
       </div>
 
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Manajemen Pengguna</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Kelola Pengguna</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Kelola akun pengguna yang memiliki akses ke sistem.
+            Kelola akun dan hak akses pengguna yang terdaftar di sistem.
           </p>
         </div>
         <button
@@ -156,8 +163,8 @@ const PenggunaPage = () => {
         {[
           { label: 'Total Pengguna', value: users.length, color: 'blue' },
           { label: 'Admin', value: users.filter(u => u.role === 'Admin').length, color: 'red' },
-          { label: 'Bendahara', value: users.filter(u => u.role === 'Bendahara').length, color: 'emerald' },
-          { label: 'Staf/Pengguna', value: users.filter(u => !['Admin','Bendahara','Pemeriksa'].includes(u.role)).length, color: 'gray' },
+          { label: 'Pemeriksa', value: users.filter(u => u.role === 'Pemeriksa').length, color: 'emerald' },
+          { label: 'Pengguna/Staf', value: users.filter(u => u.role === 'Pengguna/Staf').length, color: 'indigo' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
             <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">{label}</p>
@@ -172,7 +179,7 @@ const PenggunaPage = () => {
         <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-between gap-4">
           <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <Users size={18} className="text-blue-500" />
-            Daftar Akun Pengguna
+            Daftar Akun Kelola Pengguna
           </h3>
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -253,7 +260,7 @@ const PenggunaPage = () => {
         {filtered.length > 0 && (
           <div className="px-6 py-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-800/30">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Menampilkan {filtered.length} dari {users.length} pengguna
+              Menampilkan {filtered.length} dari {users.length} akun terdaftar
             </p>
           </div>
         )}
@@ -266,7 +273,7 @@ const PenggunaPage = () => {
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800">
               <h3 className="font-bold text-gray-900 dark:text-white">
-                {modalMode === 'add' && 'Tambah Pengguna Baru'}
+                {modalMode === 'add' && 'Tambah Akun Pengguna'}
                 {modalMode === 'edit' && `Edit Data: ${editTarget?.namaLengkap}`}
                 {modalMode === 'reset' && `Reset Password: ${editTarget?.namaLengkap}`}
               </h3>
@@ -386,7 +393,7 @@ const PenggunaPage = () => {
             <div className="w-14 h-14 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle size={28} className="text-red-600 dark:text-red-400" />
             </div>
-            <h3 className="font-bold text-gray-900 dark:text-white mb-2">Hapus Pengguna?</h3>
+            <h3 className="font-bold text-gray-900 dark:text-white mb-2">Hapus Akun Pengguna?</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
               Akun <span className="font-semibold text-gray-900 dark:text-white">@{deleteConfirm}</span> akan dihapus secara permanen dan tidak dapat dikembalikan.
             </p>

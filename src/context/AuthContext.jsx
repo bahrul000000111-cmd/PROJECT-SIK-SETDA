@@ -27,6 +27,24 @@ const DEFAULT_USERS = [
     username: 'Hapsa',
     password: '12345678',
   },
+  {
+    id: 'staf-001',
+    namaLengkap: 'Bahrul Ulum',
+    nip: '199501012020121001',
+    role: 'Pengguna/Staf',
+    instansi: 'Sekretariat Daerah',
+    username: 'bahrul',
+    password: '12345678',
+  },
+  {
+    id: 'pemeriksa-001',
+    namaLengkap: 'Inspektur Utama',
+    nip: '198001012005011001',
+    role: 'Pemeriksa',
+    instansi: 'Inspektorat Daerah',
+    username: 'inspektur',
+    password: '12345678',
+  },
 ];
 
 export const AuthProvider = ({ children }) => {

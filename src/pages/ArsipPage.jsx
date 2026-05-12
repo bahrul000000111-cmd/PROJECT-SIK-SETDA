@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useContext, useEffect } from 'react';
 import { DpaContext } from '../context/DpaContext';
+import { AuthContext } from '../context/AuthContext';
 import { FolderOpen, Plus, Trash2, Search, X, AlertTriangle, FileText, Receipt, FileCheck, File } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -52,6 +53,8 @@ const saveArsip = (data) => localStorage.setItem(STORAGE_KEY, JSON.stringify(dat
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ArsipPage = () => {
   const { dpaData } = useContext(DpaContext);
+  const { currentUser } = useContext(AuthContext);
+  const isPemeriksa = currentUser?.role === 'Pemeriksa';
   const subKegiatanList = useMemo(() => extractSubKegiatan(dpaData), [dpaData]);
 
   const [arsip, setArsip] = useState(loadArsip);
@@ -118,12 +121,15 @@ const ArsipPage = () => {
             Buku kendali digital untuk SPM, Bukti Bayar, dan dokumen penatausahaan lainnya.
           </p>
         </div>
+        {/* Tombol Tambah: disembunyikan dari Pemeriksa */}
+        {!isPemeriksa && (
         <button
           onClick={() => { setForm(emptyForm); setFormError(''); setIsModalOpen(true); }}
           className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
         >
           <Plus size={18} /> Tambah Dokumen
         </button>
+        )}
       </div>
 
       {/* Stat Cards per Jenis */}
@@ -171,7 +177,7 @@ const ArsipPage = () => {
           <table className="w-full border-collapse text-sm whitespace-nowrap">
             <thead>
               <tr className="bg-gray-100/80 dark:bg-gray-700/50 border-b-2 border-gray-200 dark:border-gray-700">
-                {['No', 'Nomor Dokumen', 'Jenis Dokumen', 'Sub Kegiatan', 'Tanggal', 'Keterangan', 'Aksi'].map(h => (
+                {['No', 'Nomor Dokumen', 'Jenis Dokumen', 'Sub Kegiatan', 'Tanggal', 'Keterangan', ...(!isPemeriksa ? ['Aksi'] : [])].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -179,7 +185,7 @@ const ArsipPage = () => {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-20 text-center">
+                  <td colSpan={isPemeriksa ? 6 : 7} className="px-6 py-20 text-center">
                     <FolderOpen size={44} className="mx-auto mb-3 text-gray-300 dark:text-gray-700" />
                     <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-1">
                       {arsip.length === 0 ? 'Arsip masih kosong' : `Tidak ada hasil untuk "${search}"`}
@@ -207,6 +213,8 @@ const ArsipPage = () => {
                     <td className="px-4 py-3 text-gray-600 dark:text-gray-400 max-w-[180px] truncate text-xs" title={doc.keterangan}>
                       {doc.keterangan || '—'}
                     </td>
+                    {/* Tombol Hapus: disembunyikan dari Pemeriksa */}
+                    {!isPemeriksa && (
                     <td className="px-4 py-3">
                       <button
                         onClick={() => setDeleteTarget(doc)}
@@ -216,6 +224,7 @@ const ArsipPage = () => {
                         <Trash2 size={15} />
                       </button>
                     </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -231,8 +240,8 @@ const ArsipPage = () => {
         )}
       </div>
 
-      {/* ══ MODAL TAMBAH DOKUMEN ══════════════════════════════════════════════ */}
-      {isModalOpen && (
+      {/* Modal Tambah: hanya tampil jika bukan Pemeriksa */}
+      {isModalOpen && !isPemeriksa && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg border border-gray-100 dark:border-gray-800 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800">

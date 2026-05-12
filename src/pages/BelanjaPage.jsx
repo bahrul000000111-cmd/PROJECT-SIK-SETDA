@@ -1,6 +1,7 @@
 import React, { useState, useContext, useMemo, useEffect } from 'react';
 import { DpaContext } from '../context/DpaContext';
-import { Trash2, AlertCircle, Plus, Info, CheckCircle2, Receipt, ChevronDown } from 'lucide-react';
+import { AuthContext } from '../context/AuthContext';
+import { Trash2, AlertCircle, Plus, Info, CheckCircle2, Receipt, ChevronDown, Eye } from 'lucide-react';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -66,6 +67,8 @@ const selectCls = inputCls + " appearance-none";
 // ─── Main Component ───────────────────────────────────────────────────────────
 const BelanjaPage = () => {
   const { dpaData, transactions, addTransaction, deleteTransaction } = useContext(DpaContext);
+  const { currentUser } = useContext(AuthContext);
+  const isPemeriksa = currentUser?.role === 'Pemeriksa';
   const [form, setForm] = useState(emptyForm);
 
   const bagianList = useMemo(() => extractBagian(dpaData), [dpaData]);
@@ -132,7 +135,8 @@ const BelanjaPage = () => {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* ── Form Kiri ─────────────────────────────────────────────── */}
+        {/* ── Form Kiri: hanya tampil untuk non-Pemeriksa ──────────────── */}
+        {!isPemeriksa && (
         <div className="xl:col-span-1 space-y-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
@@ -246,9 +250,10 @@ const BelanjaPage = () => {
             </form>
           </div>
         </div>
+        )} {/* end !isPemeriksa */}
 
         {/* ── Tabel Kanan ────────────────────────────────────────────── */}
-        <div className="xl:col-span-2">
+        <div className={isPemeriksa ? 'xl:col-span-3' : 'xl:col-span-2'}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex justify-between items-center">
               <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
@@ -260,14 +265,14 @@ const BelanjaPage = () => {
               <table className="w-full text-left border-collapse text-sm whitespace-nowrap">
                 <thead>
                   <tr className="bg-gray-50/80 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
-                    {['Tanggal', 'No. SPM', 'Jenis', 'No. TBP', 'Sub Kegiatan', 'Uraian', 'Nominal', 'Pajak', 'Aksi'].map(h => (
+                    {['Tanggal', 'No. SPM', 'Jenis', 'No. TBP', 'Sub Kegiatan', 'Uraian', 'Nominal', 'Pajak', ...(!isPemeriksa ? ['Aksi'] : [])].map(h => (
                       <th key={h} className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                   {transactions.length === 0 ? (
-                    <tr><td colSpan="9" className="px-6 py-14 text-center text-sm text-gray-400">Belum ada transaksi yang dicatat.</td></tr>
+                    <tr><td colSpan={isPemeriksa ? 8 : 9} className="px-6 py-14 text-center text-sm text-gray-400">Belum ada transaksi yang dicatat.</td></tr>
                   ) : transactions.map(tx => (
                     <tr key={tx.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{tx.tanggalSpm || tx.tanggal || '-'}</td>
@@ -284,11 +289,14 @@ const BelanjaPage = () => {
                           ? <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border border-amber-100 dark:border-amber-800">{tx.jenisPajak}</span>
                           : <span className="text-xs text-gray-400">–</span>}
                       </td>
+                      {/* Tombol Hapus: disembunyikan dari Pemeriksa */}
+                      {!isPemeriksa && (
                       <td className="px-4 py-3">
                         <button onClick={() => deleteTransaction(tx.id)} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-colors" title="Hapus">
                           <Trash2 size={15} />
                         </button>
                       </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -297,7 +305,7 @@ const BelanjaPage = () => {
                     <tr className="bg-gray-50 dark:bg-gray-800 border-t-2 border-gray-200 dark:border-gray-700">
                       <td colSpan="6" className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-white text-right">Total Seluruh Belanja</td>
                       <td className="px-4 py-3 text-sm font-bold text-blue-600 dark:text-blue-400 text-right">{formatRupiah(totalSeluruh)}</td>
-                      <td colSpan="2" />
+                      <td colSpan={isPemeriksa ? 1 : 2} />
                     </tr>
                   </tfoot>
                 )}
