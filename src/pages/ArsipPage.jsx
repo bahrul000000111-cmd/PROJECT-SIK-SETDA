@@ -171,10 +171,10 @@ const ArsipPage = () => {
                   <td colSpan={isPemeriksa ? 6 : 7} className="px-6 py-20 text-center">
                     <FolderOpen size={44} className="mx-auto mb-3 text-gray-300 dark:text-gray-700" />
                     <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-1">
-                      {arsip.length === 0 ? 'Arsip masih kosong' : `Tidak ada hasil untuk "${search}"`}
+                      {(arsipDokumen || []).length === 0 ? 'Arsip masih kosong' : `Tidak ada hasil untuk "${search}"`}
                     </p>
                     <p className="text-xs text-gray-400 dark:text-gray-500">
-                      {arsip.length === 0 ? 'Klik "Tambah Dokumen" untuk mulai mengarsipkan.' : 'Coba kata kunci yang berbeda.'}
+                      {(arsipDokumen || []).length === 0 ? 'Klik "Tambah Dokumen" untuk mulai mengarsipkan.' : 'Coba kata kunci yang berbeda.'}
                     </p>
                   </td>
                 </tr>
