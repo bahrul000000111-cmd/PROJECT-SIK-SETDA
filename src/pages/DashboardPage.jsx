@@ -15,12 +15,8 @@ import {
   Receipt,
   SearchX,
   ArrowRight,
-  Plus,
-  FileBarChart2,
   Clock,
   FileText,
-  BadgeCheck,
-  FilePlus2,
 } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -47,16 +43,6 @@ const JENIS_SPM_BADGE = {
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
-/** Quick Action Button */
-const QuickBtn = ({ icon: Icon, label, color, onClick }) => (
-  <button
-    onClick={onClick}
-    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all duration-200 active:scale-[0.97] cursor-pointer shadow-sm hover:shadow-md ${color}`}
-  >
-    <Icon size={16} strokeWidth={2} />
-    {label}
-  </button>
-);
 
 /** Widget Card wrapper */
 const WidgetCard = ({ icon: Icon, iconColor, iconBg, title, linkLabel, onLink, children }) => (
@@ -94,11 +80,7 @@ const DashboardPage = () => {
   const isAdmin    = role === 'Admin';
   const isPengguna = role === 'Pengguna/Staf';
   const isPemeriksa = role === 'Pemeriksa';
-  const canInput   = isAdmin || isPengguna; // bisa aksi input
-
-  // ── Greeting ──
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Selamat Pagi' : hour < 15 ? 'Selamat Siang' : hour < 18 ? 'Selamat Sore' : 'Selamat Malam';
+  const canInput   = isAdmin || isPengguna;
 
   // ── Kalkulasi Keuangan (dari data nyata) ──
   const totalAnggaran = useMemo(
@@ -139,48 +121,12 @@ const DashboardPage = () => {
   return (
     <div className="flex flex-col gap-6 pb-10">
 
-      {/* ── Header Row ─────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{greeting}, <span className="font-semibold text-gray-800 dark:text-gray-200">{currentUser?.namaLengkap || 'Pengguna'}</span> 👋</p>
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight mt-0.5">
-            Ringkasan APBD Sekretariat Daerah
-          </h2>
-        </div>
-        <span className={`self-start sm:self-auto inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border
-          ${isAdmin ? 'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800' : ''}
-          ${isPengguna ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800' : ''}
-          ${isPemeriksa ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800' : ''}
-        `}>
-          <BadgeCheck size={13} strokeWidth={2.5} />
-          {role}
-        </span>
-      </div>
-
-      {/* ── Quick Action Buttons ─────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-2">
-        {canInput && (
-          <QuickBtn
-            icon={Plus}
-            label="Input Belanja"
-            color="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
-            onClick={() => navigate('/belanja')}
-          />
-        )}
-        {canInput && (
-          <QuickBtn
-            icon={FilePlus2}
-            label="Tambah Arsip"
-            color="bg-amber-500 hover:bg-amber-600 text-white border-amber-500"
-            onClick={() => navigate('/arsip')}
-          />
-        )}
-        <QuickBtn
-          icon={FileBarChart2}
-          label="Lihat LRA"
-          color="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700"
-          onClick={() => navigate('/lra')}
-        />
+      {/* ── Page Title ───────────────────────────────────────────────────── */}
+      <div>
+        <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+          Ringkasan APBD Sekretariat Daerah
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Tahun Anggaran {new Date().getFullYear()}</p>
       </div>
 
       {/* ── 3 Stat Cards ─────────────────────────────────────────────────── */}

@@ -87,11 +87,11 @@ const Sidebar = ({ isSidebarOpen }) => {
 
           {/* Belanja: Admin & Pengguna/Staf saja (Pemeriksa tidak bisa input) */}
           {(isAdmin || isPengguna) && (
-            <SidebarItem icon={ShoppingBag} label="Belanja" to="/belanja" hasChevron isSidebarOpen={isSidebarOpen} />
+            <SidebarItem icon={ShoppingBag} label="Input Belanja" to="/belanja" hasChevron isSidebarOpen={isSidebarOpen} />
           )}
 
           {/* Arsip: semua role */}
-          <SidebarItem icon={FolderOpen} label="Arsip" to="/arsip" hasChevron isSidebarOpen={isSidebarOpen} />
+          <SidebarItem icon={FolderOpen} label="Tambah Arsip" to="/arsip" hasChevron isSidebarOpen={isSidebarOpen} />
 
           {/* ── Laporan ─── */}
           <SidebarHeader title="Laporan" isSidebarOpen={isSidebarOpen} />

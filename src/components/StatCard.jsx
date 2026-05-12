@@ -1,5 +1,4 @@
 import React from 'react';
-import { MoreHorizontal } from 'lucide-react';
 
 const StatCard = ({ title, icon: Icon, colorClass, bgColorClass, barColorClass, value = "Rp 0,00" }) => {
   return (
@@ -10,9 +9,6 @@ const StatCard = ({ title, icon: Icon, colorClass, bgColorClass, barColorClass, 
           <div className={`p-3 rounded-full ${bgColorClass} ${colorClass}`}>
             <Icon size={20} strokeWidth={1.5} />
           </div>
-          <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer">
-            <MoreHorizontal size={20} strokeWidth={1.5} />
-          </button>
         </div>
 
         {/* Middle Section */}

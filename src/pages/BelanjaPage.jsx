@@ -127,10 +127,10 @@ const BelanjaPage = () => {
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 font-medium">
         <span>Dashboard</span><span>/</span><span>Penatausahaan</span><span>/</span>
-        <span className="text-gray-900 dark:text-white">Belanja</span>
+        <span className="text-gray-900 dark:text-white">Input Belanja</span>
       </div>
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Pencatatan Belanja</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Input Belanja</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Input SPM dan pantau transaksi pengeluaran secara real-time.</p>
       </div>
 

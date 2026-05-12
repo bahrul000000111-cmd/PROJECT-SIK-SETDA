@@ -90,7 +90,7 @@ const ArsipPage = () => {
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 font-medium">
         <span>Dashboard</span><span>/</span><span>Penatausahaan</span><span>/</span>
-        <span className="text-gray-900 dark:text-white">Arsip Dokumen</span>
+        <span className="text-gray-900 dark:text-white">Tambah Arsip Dokumen</span>
       </div>
 
       {/* Page Header */}
@@ -98,7 +98,7 @@ const ArsipPage = () => {
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
             <FolderOpen size={24} className="text-amber-500" />
-            Arsip Dokumen Penatausahaan
+            Tambah Arsip Dokumen
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Buku kendali digital untuk SPM, Bukti Bayar, dan dokumen penatausahaan lainnya.
