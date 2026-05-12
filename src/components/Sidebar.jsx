@@ -109,20 +109,6 @@ const Sidebar = ({ isSidebarOpen }) => {
 
         </nav>
       </div>
-
-      {/* ── Role Badge di bawah sidebar ─── */}
-      {isSidebarOpen && (
-        <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800">
-          <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold
-            ${isAdmin ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : ''}
-            ${isPemeriksa ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : ''}
-            ${isPengguna ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : ''}
-          `}>
-            <ShieldCheck size={13} strokeWidth={2} />
-            <span>{role}</span>
-          </div>
-        </div>
-      )}
     </aside>
   );
 };
