@@ -3,6 +3,7 @@ import { dpaNestedData } from '../utils/dataStore';
 
 export const DpaContext = createContext();
 
+// ─── Tree Totals Calculator ───────────────────────────────────────────────────
 export const calculateTreeTotals = (tree) => {
   return tree.map(node => {
     const cloned = { ...node };
@@ -22,20 +23,27 @@ export const calculateTreeTotals = (tree) => {
   });
 };
 
+// ─── Safe localStorage Helper ─────────────────────────────────────────────────
+const safeLoadLS = (key, fallback = []) => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error(`[DpaContext] localStorage parse error for key "${key}":`, e);
+    localStorage.removeItem(key); // hapus data corrupt agar tidak White Screen
+    return fallback;
+  }
+};
+
+// ─── Provider ─────────────────────────────────────────────────────────────────
 export const DpaProvider = ({ children }) => {
+
+  // ── DPA Tree ──
   const [dpaData, setDpaData] = useState(() => calculateTreeTotals(dpaNestedData));
 
-  const [transactions, setTransactionsState] = useState(() => {
-    try {
-      const saved = localStorage.getItem('transactions');
-      if (!saved) return [];
-      return JSON.parse(saved);
-    } catch (e) {
-      console.error('[DpaContext] localStorage parse error for key "transactions":', e);
-      localStorage.removeItem('transactions'); // hapus data corrupt
-      return [];
-    }
-  });
+  // ── Transactions (Belanja) ──
+  const [transactions, setTransactionsState] = useState(() => safeLoadLS('transactions'));
 
   const setTransactions = (txs) => {
     setTransactionsState(txs);
@@ -50,8 +58,38 @@ export const DpaProvider = ({ children }) => {
     setTransactions(prev => prev.filter(t => t.id !== id));
   };
 
+  // ── Arsip Dokumen (diangkat dari ArsipPage) ──
+  const [arsipDokumen, setArsipState] = useState(() => safeLoadLS('arsipDokumen'));
+
+  const setArsip = (data) => {
+    setArsipState(data);
+    localStorage.setItem('arsipDokumen', JSON.stringify(data));
+  };
+
+  const addArsip = (doc) => {
+    setArsip(prev => [doc, ...prev]);
+  };
+
+  const deleteArsip = (id) => {
+    setArsip(prev =>
+      prev.filter(a => a.id !== id).map((a, i) => ({ ...a, no: i + 1 }))
+    );
+  };
+
   return (
-    <DpaContext.Provider value={{ dpaData, setDpaData, transactions, addTransaction, deleteTransaction }}>
+    <DpaContext.Provider value={{
+      // DPA
+      dpaData,
+      setDpaData,
+      // Transaksi Belanja
+      transactions,
+      addTransaction,
+      deleteTransaction,
+      // Arsip Dokumen
+      arsipDokumen,
+      addArsip,
+      deleteArsip,
+    }}>
       {children}
     </DpaContext.Provider>
   );

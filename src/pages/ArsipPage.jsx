@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useContext, useEffect } from 'react';
+import React, { useState, useMemo, useContext } from 'react';
 import { DpaContext } from '../context/DpaContext';
 import { AuthContext } from '../context/AuthContext';
 import { FolderOpen, Plus, Trash2, Search, X, AlertTriangle, FileText, Receipt, FileCheck, File } from 'lucide-react';
@@ -35,44 +35,27 @@ const extractSubKegiatan = (nodes) => {
   return result;
 };
 
-// ─── Load/Save from localStorage ─────────────────────────────────────────────
-const STORAGE_KEY = 'arsipDokumen';
-const loadArsip = () => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch (e) {
-    console.error('[ArsipPage] localStorage parse error for key "arsipDokumen":', e);
-    localStorage.removeItem(STORAGE_KEY); // hapus data corrupt
-    return [];
-  }
-};
-const saveArsip = (data) => localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+// ─── State arsip kini dikelola oleh DpaContext (lifted state) ────────────────
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ArsipPage = () => {
-  const { dpaData } = useContext(DpaContext);
+  const { dpaData, arsipDokumen, addArsip, deleteArsip } = useContext(DpaContext);
   const { currentUser } = useContext(AuthContext);
   const isPemeriksa = currentUser?.role === 'Pemeriksa';
   const subKegiatanList = useMemo(() => extractSubKegiatan(dpaData), [dpaData]);
 
-  const [arsip, setArsip] = useState(loadArsip);
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  // Persist ke localStorage setiap kali arsip berubah
-  useEffect(() => { saveArsip(arsip); }, [arsip]);
-
   const filtered = useMemo(() =>
-    arsip.filter(a =>
+    (arsipDokumen || []).filter(a =>
       a.nomorDokumen.toLowerCase().includes(search.toLowerCase()) ||
       a.keterangan.toLowerCase().includes(search.toLowerCase()) ||
       a.jenisDokumen.toLowerCase().includes(search.toLowerCase())
-    ), [arsip, search]);
+    ), [arsipDokumen, search]);
 
   const handleChange = (e) => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
 
@@ -86,21 +69,21 @@ const ArsipPage = () => {
     const subKeg = subKegiatanList.find(s => s.id === form.subKegiatanId);
     const newDoc = {
       id: Date.now(),
-      no: arsip.length + 1,
+      no: (arsipDokumen?.length || 0) + 1,
       ...form,
       namaSubKegiatan: subKeg?.label || '-',
     };
-    setArsip(prev => [newDoc, ...prev]);
+    addArsip(newDoc);
     setForm(emptyForm);
     setIsModalOpen(false);
   };
 
   const handleDelete = (id) => {
-    setArsip(prev => prev.filter(a => a.id !== id).map((a, i) => ({ ...a, no: i + 1 })));
+    deleteArsip(id);
     setDeleteTarget(null);
   };
 
-  const statByJenis = useMemo(() => JENIS_DOKUMEN.map(j => ({ jenis: j, count: arsip.filter(a => a.jenisDokumen === j).length })), [arsip]);
+  const statByJenis = useMemo(() => JENIS_DOKUMEN.map(j => ({ jenis: j, count: (arsipDokumen || []).filter(a => a.jenisDokumen === j).length })), [arsipDokumen]);
 
   return (
     <div className="flex flex-col gap-6 pb-10">
@@ -233,9 +216,9 @@ const ArsipPage = () => {
         </div>
 
         {/* Footer */}
-        {arsip.length > 0 && (
+        {(arsipDokumen?.length || 0) > 0 && (
           <div className="px-6 py-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-800/30">
-            <p className="text-xs text-gray-400">Total {arsip.length} dokumen tersimpan</p>
+            <p className="text-xs text-gray-400">Total {arsipDokumen?.length || 0} dokumen tersimpan</p>
           </div>
         )}
       </div>
