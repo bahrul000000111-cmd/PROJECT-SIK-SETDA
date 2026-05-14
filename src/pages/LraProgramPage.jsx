@@ -1,9 +1,10 @@
 import React, { useContext, useMemo, useState, useCallback } from 'react';
 import { DpaContext } from '../context/DpaContext';
 import { AuthContext } from '../context/AuthContext';
+import * as XLSX from 'xlsx';
 import {
   Printer, ChevronDown, ChevronRight, ChevronsDownUp,
-  ChevronsUpDown, FileBarChart2, TrendingUp, TrendingDown, Minus
+  ChevronsUpDown, FileBarChart2, TrendingUp, TrendingDown, Minus, FileSpreadsheet
 } from 'lucide-react';
 
 // ─── Format Helpers ───────────────────────────────────────────────────────────
@@ -84,7 +85,7 @@ const DEPTH_STYLES = {
 };
 
 // ─── Tree Row ─────────────────────────────────────────────────────────────────
-const LraRow = ({ node, expandedIds, toggleNode, depth = 0 }) => {
+const LraRow = ({ node, expandedIds, toggleNode, depth = 0, selectedYear }) => {
   const isExpanded = expandedIds.has(node.id);
   const hasChildren = node.children && node.children.length > 0;
   const style = DEPTH_STYLES[node.tipe] || DEPTH_STYLES['Sub Kegiatan'];
@@ -92,12 +93,12 @@ const LraRow = ({ node, expandedIds, toggleNode, depth = 0 }) => {
   return (
     <>
       <tr className={`border-b border-gray-100 dark:border-gray-800 transition-colors ${style.rowCls}`}>
-        {/* Kode */}
+        {/* KODE REKENING */}
         <td className="px-4 py-3 text-xs font-mono text-gray-500 dark:text-gray-400 whitespace-nowrap">
           {node.kode}
         </td>
 
-        {/* Uraian (dengan indent & toggle) */}
+        {/* URAIAN (dengan indent & toggle) */}
         <td className="px-4 py-3 min-w-[280px] max-w-[400px]">
           <div className="flex items-start gap-2" style={{ paddingLeft: `${style.indent}px` }}>
             {hasChildren ? (
@@ -116,22 +117,17 @@ const LraRow = ({ node, expandedIds, toggleNode, depth = 0 }) => {
           </div>
         </td>
 
-        {/* Anggaran */}
+        {/* ANGGARAN */}
         <td className="px-4 py-3 text-right text-xs font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
           {formatRupiah(node.totalAnggaran)}
         </td>
 
-        {/* Realisasi */}
+        {/* REALISASI {selectedYear} */}
         <td className="px-4 py-3 text-right text-xs font-semibold text-blue-700 dark:text-blue-400 whitespace-nowrap">
           {formatRupiah(node.realisasi)}
         </td>
 
-        {/* Sisa Anggaran */}
-        <td className={`px-4 py-3 text-right text-xs font-medium whitespace-nowrap ${node.sisaAnggaran < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}>
-          {formatRupiah(node.sisaAnggaran)}
-        </td>
-
-        {/* Capaian */}
+        {/* % {selectedYear} */}
         <td className="px-4 py-3 whitespace-nowrap">
           <div className="flex flex-col items-end gap-1.5">
             <CapaianBadge persen={node.capaianPersen} />
@@ -148,6 +144,7 @@ const LraRow = ({ node, expandedIds, toggleNode, depth = 0 }) => {
           expandedIds={expandedIds}
           toggleNode={toggleNode}
           depth={depth + 1}
+          selectedYear={selectedYear}
         />
       ))}
     </>
@@ -169,13 +166,13 @@ const collectAllIds = (nodes) => {
   return ids;
 };
 
-// ─── Main LraPage ─────────────────────────────────────────────────────────────
-const LraPage = () => {
+// ─── Main LraProgramPage ─────────────────────────────────────────────────────────────
+const LraProgramPage = () => {
   const { dpaData: rawDpaData, transactions: rawTransactions } = useContext(DpaContext);
   const { selectedYear } = useContext(AuthContext);
 
   // Pastikan selalu berupa array sebelum diproses
-  const dpaData      = Array.isArray(rawDpaData)      ? rawDpaData      : [];
+  const dpaData     = Array.isArray(rawDpaData)      ? rawDpaData      : [];
   const transactions = Array.isArray(rawTransactions) ? rawTransactions : [];
 
   // Enrich tree with realisasi data
@@ -209,6 +206,76 @@ const LraPage = () => {
   const expandAll  = () => setExpandedIds(new Set(allIds));
   const collapseAll = () => setExpandedIds(new Set());
 
+  // ─── Export to Excel ────────────────────────────────────────────────────────
+  const exportToExcel = () => {
+    // Flatten data for export
+    const exportData = [];
+    const flattenData = (nodes, depth = 0) => {
+      nodes.forEach(node => {
+        exportData.push({
+          'KODE REKENING': node.kode,
+          'URAIAN': '  '.repeat(depth * 2) + node.uraian,
+          'ANGGARAN': node.totalAnggaran || 0,
+          [`REALISASI ${selectedYear}`]: node.realisasi || 0,
+          [`% ${selectedYear}`]: parseFloat((node.capaianPersen || 0).toFixed(2))
+        });
+        if (node.children && node.children.length > 0) {
+          flattenData(node.children, depth + 1);
+        }
+      });
+    };
+    flattenData(lraData);
+
+    // Add totals to the end of exportData
+    exportData.push({
+      'KODE REKENING': '',
+      'URAIAN': 'TOTAL KESELURUHAN',
+      'ANGGARAN': grandTotal.anggaran,
+      [`REALISASI ${selectedYear}`]: grandTotal.realisasi,
+      [`% ${selectedYear}`]: parseFloat(grandTotal.persen.toFixed(2))
+    });
+
+    // Create Worksheet
+    const ws = XLSX.utils.json_to_sheet([], { skipHeader: true });
+
+    // Calculate dates
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    const startDateStr = startOfMonth.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    const endDateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    // Headers 1-7
+    const customHeader = [
+      [],
+      ['PEMERINTAHAN KAB. DONGGALA'],
+      ['LAPORAN REALISASI ANGGARAN PENDAPATAN DAN BELANJA DAERAH'],
+      [`TAHUN ANGGARAN ${selectedYear}`],
+      [`${startDateStr} sampai ${endDateStr}`],
+      [],
+      ['KODE REKENING', 'URAIAN', 'ANGGARAN', `REALISASI ${selectedYear}`, `% ${selectedYear}`]
+    ];
+
+    XLSX.utils.sheet_add_aoa(ws, customHeader, { origin: 'A1' });
+    
+    // Add data starting from Row 8
+    XLSX.utils.sheet_add_json(ws, exportData, { origin: 'A8', skipHeader: true });
+
+    // Formatting: Adjust column widths
+    ws['!cols'] = [
+      { wch: 20 }, // KODE REKENING
+      { wch: 60 }, // URAIAN
+      { wch: 20 }, // ANGGARAN
+      { wch: 20 }, // REALISASI
+      { wch: 15 }  // %
+    ];
+
+    // Create Workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "LRA");
+    XLSX.writeFile(wb, `LRA_${selectedYear}.xlsx`);
+  };
+
   return (
     <div className="flex flex-col gap-6 pb-10 print:pb-0">
       {/* Breadcrumb */}
@@ -232,7 +299,7 @@ const LraPage = () => {
         </div>
 
         {/* Action Bar */}
-        <div className="flex items-center gap-2 print:hidden">
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
           <button
             onClick={expandAll}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
@@ -250,6 +317,12 @@ const LraPage = () => {
             className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
           >
             <Printer size={14} /> Cetak Laporan
+          </button>
+          <button
+            onClick={exportToExcel}
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
+          >
+            <FileSpreadsheet size={14} /> Export Excel
           </button>
         </div>
       </div>
@@ -288,18 +361,17 @@ const LraPage = () => {
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-gray-100/80 dark:bg-gray-700/50 border-b-2 border-gray-200 dark:border-gray-700">
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap w-[200px]">Kode</th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[280px]">Uraian</th>
-                <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Anggaran (Rp)</th>
-                <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Realisasi (Rp)</th>
-                <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Sisa Anggaran (Rp)</th>
-                <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Capaian</th>
+                <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap w-[200px]">KODE REKENING</th>
+                <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[280px]">URAIAN</th>
+                <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">ANGGARAN</th>
+                <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">REALISASI {selectedYear}</th>
+                <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">% {selectedYear}</th>
               </tr>
             </thead>
             <tbody>
               {lraData.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-20 text-center text-sm text-gray-400 dark:text-gray-500">
+                  <td colSpan="5" className="px-6 py-20 text-center text-sm text-gray-400 dark:text-gray-500">
                     <FileBarChart2 size={40} className="mx-auto mb-3 text-gray-300 dark:text-gray-700" />
                     Data anggaran belum tersedia.
                   </td>
@@ -312,6 +384,7 @@ const LraPage = () => {
                     expandedIds={expandedIds}
                     toggleNode={toggleNode}
                     depth={0}
+                    selectedYear={selectedYear}
                   />
                 ))
               )}
@@ -330,9 +403,6 @@ const LraPage = () => {
                   <td className="px-4 py-4 text-right text-xs font-black text-blue-300 whitespace-nowrap">
                     {formatRupiah(grandTotal.realisasi)}
                   </td>
-                  <td className={`px-4 py-4 text-right text-xs font-black whitespace-nowrap ${grandTotal.sisa < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                    {formatRupiah(grandTotal.sisa)}
-                  </td>
                   <td className="px-4 py-4 text-right">
                     <CapaianBadge persen={grandTotal.persen} />
                   </td>
@@ -344,7 +414,7 @@ const LraPage = () => {
       </div>
 
       {/* Keterangan Warna */}
-      <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400 print:hidden">
+      <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400 print:hidden mt-4">
         <span className="font-semibold">Keterangan Capaian:</span>
         <span className="flex items-center gap-1.5"><TrendingUp size={12} className="text-emerald-600" /><span className="text-emerald-700 dark:text-emerald-400 font-medium">≥ 80%</span> — Baik</span>
         <span className="flex items-center gap-1.5"><Minus size={12} className="text-amber-600" /><span className="text-amber-700 dark:text-amber-400 font-medium">40% – 79%</span> — Perlu Perhatian</span>
@@ -354,4 +424,4 @@ const LraPage = () => {
   );
 };
 
-export default LraPage;
+export default LraProgramPage;
