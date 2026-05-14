@@ -1,28 +1,30 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { Lock, User, AlertCircle } from 'lucide-react';
+import { Lock, User, AlertCircle, Loader2 } from 'lucide-react';
 import logoDonggala from '../assets/images/logo-donggala.png';
 
 const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error,    setError]    = useState('');
   const navigate = useNavigate();
-  const { login } = useContext(AuthContext);
+  const { login, isLoggingIn } = useContext(AuthContext);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
-    if (username && password) {
-      const result = login(username, password);
-      if (result.success) {
-        navigate('/dashboard');
-      } else {
-        setError(result.message);
-      }
-    } else {
+
+    if (!username || !password) {
       setError('Harap isi username dan password!');
+      return;
+    }
+
+    const result = await login(username, password);
+    if (result.success) {
+      navigate('/dashboard');
+    } else {
+      setError(result.message || 'Login gagal. Periksa username dan password.');
     }
   };
 
@@ -31,9 +33,9 @@ const LoginPage = () => {
       <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-700">
         <div className="p-8">
           <div className="flex flex-col items-center mb-8">
-            <img 
-              src={logoDonggala} 
-              alt="Logo Donggala" 
+            <img
+              src={logoDonggala}
+              alt="Logo Donggala"
               className="h-[50px] w-auto mb-4 drop-shadow-md"
             />
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white text-center" style={{ fontFamily: 'Urbanist, Inter, sans-serif' }}>
@@ -58,12 +60,13 @@ const LoginPage = () => {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <User size={18} className="text-gray-400" />
                 </div>
-                <input 
+                <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all sm:text-sm"
                   placeholder="Masukkan username"
+                  disabled={isLoggingIn}
                   required
                 />
               </div>
@@ -75,24 +78,31 @@ const LoginPage = () => {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock size={18} className="text-gray-400" />
                 </div>
-                <input 
+                <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all sm:text-sm"
                   placeholder="Masukkan password"
+                  disabled={isLoggingIn}
                   required
                 />
               </div>
             </div>
 
-
-
             <button
               type="submit"
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors mt-6"
+              disabled={isLoggingIn}
+              className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors mt-6 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Masuk Aplikasi
+              {isLoggingIn ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Memverifikasi...
+                </>
+              ) : (
+                'Masuk Aplikasi'
+              )}
             </button>
           </form>
 

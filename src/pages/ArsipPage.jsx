@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useContext } from 'react';
 import { DpaContext } from '../context/DpaContext';
 import { AuthContext } from '../context/AuthContext';
-import { FolderOpen, Plus, Trash2, Search, X, AlertTriangle, FileText, File, Upload } from 'lucide-react';
+import { FolderOpen, Plus, Trash2, Search, X, AlertTriangle, FileText, File, Upload, Loader2 } from 'lucide-react';
 
 const JENIS_DOKUMEN = ['SPM', 'Dokumen Lainnya'];
 
@@ -24,6 +24,8 @@ const ArsipPage = () => {
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(null); // id yang sedang dihapus
 
   const filtered = useMemo(() =>
     (arsipDokumen || []).filter(a =>
@@ -46,28 +48,43 @@ const ArsipPage = () => {
     setForm(p => ({ ...p, fileDokumen: file, fileNama: file.name }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
     if (!form.nomorDokumen || !form.jenisDokumen || !form.tanggal || !form.keterangan) {
       setFormError('Nomor Dokumen, Jenis, Tanggal, dan Keterangan wajib diisi!');
       return;
     }
-    const newDoc = {
-      id: Date.now(),
-      no: (arsipDokumen?.length || 0) + 1,
-      nomorDokumen: form.nomorDokumen,
-      jenisDokumen: form.jenisDokumen,
-      tanggal: form.tanggal,
-      fileNama: form.fileNama || '-',
-      keterangan: form.keterangan,
-    };
-    addArsip(newDoc);
-    setForm(emptyForm);
-    setIsModalOpen(false);
+    setIsSubmitting(true);
+    try {
+      // Kirim seluruh form (termasuk File object) ke addArsip di DpaContext
+      const result = await addArsip({
+        nomorDokumen: form.nomorDokumen,
+        jenisDokumen: form.jenisDokumen,
+        tanggal:      form.tanggal,
+        keterangan:   form.keterangan,
+        fileDokumen:  form.fileDokumen || null, // File object
+      });
+      if (result.success) {
+        setForm(emptyForm);
+        setIsModalOpen(false);
+      } else {
+        setFormError(result.message || 'Gagal menyimpan dokumen.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDelete = (id) => { deleteArsip(id); setDeleteTarget(null); };
+  const handleDelete = async (id) => {
+    setIsDeleting(id);
+    try {
+      await deleteArsip(id);
+    } finally {
+      setIsDeleting(null);
+      setDeleteTarget(null);
+    }
+  };
 
   const statByJenis = useMemo(() => JENIS_DOKUMEN.map(j => ({ jenis: j, count: (arsipDokumen || []).filter(a => a.jenisDokumen === j).length })), [arsipDokumen]);
 
@@ -213,8 +230,10 @@ const ArsipPage = () => {
                 <textarea name="keterangan" value={form.keterangan} onChange={handleChange} rows={2} placeholder="Wajib diisi..." className={iCls + " resize-none"} />
               </div>
               <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2.5 text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">Batal</button>
-                <button type="submit" className="flex-1 px-4 py-2.5 text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-xl shadow-sm active:scale-[0.98] transition-all cursor-pointer">Simpan Arsip</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="flex-1 px-4 py-2.5 text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer disabled:opacity-50">Batal</button>
+                <button type="submit" disabled={isSubmitting} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-xl shadow-sm active:scale-[0.98] transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+                  {isSubmitting ? <><Loader2 size={14} className="animate-spin" /> Menyimpan...</> : 'Simpan Arsip'}
+                </button>
               </div>
             </form>
           </div>
@@ -230,8 +249,10 @@ const ArsipPage = () => {
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Dokumen <span className="font-bold text-gray-800 dark:text-white">{deleteTarget.nomorDokumen}</span></p>
             <p className="text-xs text-gray-400 mb-6">akan dihapus secara permanen dari arsip.</p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteTarget(null)} className="flex-1 px-4 py-2.5 text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">Batal</button>
-              <button onClick={() => handleDelete(deleteTarget.id)} className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-600 hover:bg-red-700 text-white rounded-xl active:scale-[0.98] transition-all cursor-pointer">Hapus</button>
+              <button onClick={() => setDeleteTarget(null)} disabled={isDeleting === deleteTarget?.id} className="flex-1 px-4 py-2.5 text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">Batal</button>
+              <button onClick={() => handleDelete(deleteTarget.id)} disabled={isDeleting === deleteTarget?.id} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold bg-red-600 hover:bg-red-700 text-white rounded-xl active:scale-[0.98] transition-all cursor-pointer disabled:opacity-60">
+                {isDeleting === deleteTarget?.id ? <><Loader2 size={14} className="animate-spin" /> Menghapus...</> : 'Hapus'}
+              </button>
             </div>
           </div>
         </div>

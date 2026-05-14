@@ -1,128 +1,131 @@
-import React, { createContext, useState } from 'react';
+/**
+ * src/context/AuthContext.jsx
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Context autentikasi berbasis API (Laravel Sanctum).
+ *
+ * Storage Policy:
+ *   - `auth_token`  → localStorage (persisten, untuk inject ke header Axios)
+ *   - `auth_user`   → localStorage (persisten, untuk restore sesi saat refresh)
+ *   - `selectedYear`→ localStorage (preferensi UI)
+ *   - Semua data DPA/Transaksi/Arsip → TIDAK disimpan di sini (ada di DpaContext)
+ */
+
+import React, { createContext, useState, useCallback } from 'react';
+import api, { getApiErrorMessage } from '../api';
 
 export const AuthContext = createContext();
 
-// ─── Safe localStorage Helper ─────────────────────────────────────────────────
-const safeGet = (key, fallback) => {
+// ─── Safe localStorage reader ─────────────────────────────────────────────────
+const safeGet = (key, fallback = null) => {
   try {
     const raw = localStorage.getItem(key);
-    if (raw === null || raw === undefined) return fallback;
+    if (raw === null) return fallback;
     return JSON.parse(raw);
-  } catch (e) {
-    console.error(`[AuthContext] localStorage parse error for key "${key}":`, e);
-    localStorage.removeItem(key); // hapus data corrupt
+  } catch {
+    localStorage.removeItem(key);
     return fallback;
   }
 };
 
-// ─── Akun Default (Seed) ──────────────────────────────────────────────────────
-// Digunakan sebagai fallback ketika localStorage kosong (perangkat/browser baru).
-const DEFAULT_USERS = [
-  {
-    id: 'admin-001',
-    namaLengkap: 'Hapsa, SE',
-    nip: '197001012000122001',
-    role: 'Admin',
-    instansi: 'Sekretariat Daerah',
-    username: 'Hapsa',
-    password: '12345678',
-  },
-  {
-    id: 'staf-001',
-    namaLengkap: 'Bahrul Ulum',
-    nip: '199501012020121001',
-    role: 'Pengguna/Staf',
-    instansi: 'Sekretariat Daerah',
-    username: 'bahrul',
-    password: '12345678',
-  },
-  {
-    id: 'pemeriksa-001',
-    namaLengkap: 'Inspektur Utama',
-    nip: '198001012005011001',
-    role: 'Pemeriksa',
-    instansi: 'Inspektorat Daerah',
-    username: 'inspektur',
-    password: '12345678',
-  },
-  {
-    id: 'bendahara-001',
-    namaLengkap: 'Bendahara Pengeluaran',
-    nip: '198506152010011001',
-    role: 'Bendahara',
-    instansi: 'Sekretariat Daerah',
-    username: 'bendahara',
-    password: '12345678',
-  },
-];
-
+// ─── Provider ─────────────────────────────────────────────────────────────────
 export const AuthProvider = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('isAuthenticated') === 'true';
-  });
-  
-  const [selectedYear, setSelectedYear] = useState(() => {
-    return localStorage.getItem('selectedYear') || new Date().getFullYear().toString();
-  });
 
-  const [currentUser, setCurrentUser] = useState(() => safeGet('currentUser', null));
+  // Restore sesi dari localStorage (token + user masih valid jika belum expired)
+  const [authToken,    setAuthToken]    = useState(() => localStorage.getItem('auth_token'));
+  const [currentUser,  setCurrentUser]  = useState(() => safeGet('auth_user'));
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    () => !!localStorage.getItem('auth_token') && !!safeGet('auth_user')
+  );
+  const [selectedYear, setSelectedYearState] = useState(
+    () => localStorage.getItem('selectedYear') || new Date().getFullYear().toString()
+  );
 
-  const [users, setUsersState] = useState(() => safeGet('users', DEFAULT_USERS));
+  // Loading state untuk menampilkan spinner di LoginPage
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const saveUsers = (updatedUsers) => {
-    setUsersState(updatedUsers);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-  };
+  // ─── setSelectedYear ────────────────────────────────────────────────────────
+  const setSelectedYear = useCallback((year) => {
+    setSelectedYearState(year);
+    localStorage.setItem('selectedYear', year);
+  }, []);
 
-  const register = (userData) => {
-    const userExists = users.some(u => u.username === userData.username);
-    if (userExists) {
-      return { success: false, message: 'Username sudah terdaftar!' };
-    }
-    saveUsers([...users, userData]);
-    return { success: true, message: 'Akun berhasil ditambahkan!' };
-  };
+  // ─── login ──────────────────────────────────────────────────────────────────
+  /**
+   * POST /api/login
+   * @param {string} username
+   * @param {string} password
+   * @returns {{ success: boolean, message?: string }}
+   */
+  const login = useCallback(async (username, password) => {
+    setIsLoggingIn(true);
+    try {
+      const { data } = await api.post('/login', { username, password });
 
-  const updateUser = (updatedUser) => {
-    const updated = users.map(u => u.username === updatedUser.username ? { ...u, ...updatedUser } : u);
-    saveUsers(updated);
-    return { success: true };
-  };
+      if (!data.success) {
+        return { success: false, message: data.message || 'Login gagal.' };
+      }
 
-  const deleteUser = (username) => {
-    saveUsers(users.filter(u => u.username !== username));
-  };
+      const { token, user } = data.data;
+      const defaultYear = new Date().getFullYear().toString();
 
-  const login = (username, password) => {
-    const defaultYear = new Date().getFullYear().toString();
-    let user = users.find(u => u.username === username && u.password === password);
-    
-    // Fallback default admin
-    if (!user && username === 'admin' && password === 'admin') {
-      user = { namaLengkap: 'Administrator', nip: '0000000000', username: 'admin', role: 'Admin', instansi: 'Sekretariat Daerah' };
-    }
-    
-    if (user) {
-      setSelectedYear(defaultYear);
-      setIsAuthenticated(true);
-      setCurrentUser(user);
+      // Simpan token dan profil user ke localStorage
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('auth_user',  JSON.stringify(user));
       localStorage.setItem('selectedYear', defaultYear);
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('currentUser', JSON.stringify(user));
-      return { success: true };
-    }
-    return { success: false, message: 'Username atau Password salah!' };
-  };
 
-  const logout = () => {
-    setIsAuthenticated(false);
-    setCurrentUser(null);
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('currentUser');
+      // Update state
+      setAuthToken(token);
+      setCurrentUser(user);
+      setSelectedYearState(defaultYear);
+      setIsAuthenticated(true);
+
+      return { success: true };
+
+    } catch (error) {
+      return {
+        success: false,
+        message: getApiErrorMessage(error, 'Username atau password salah.'),
+      };
+    } finally {
+      setIsLoggingIn(false);
+    }
+  }, []);
+
+  // ─── logout ─────────────────────────────────────────────────────────────────
+  /**
+   * POST /api/logout  (best-effort — jika gagal, tetap logout di client)
+   */
+  const logout = useCallback(async () => {
+    try {
+      await api.post('/logout');
+    } catch {
+      // Abaikan error — prioritas adalah bersihkan sisi client
+    } finally {
+      // Hapus semua data sesi dari localStorage
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_user');
+
+      // Reset state
+      setAuthToken(null);
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+    }
+  }, []);
+
+  // ─── Nilai Context ───────────────────────────────────────────────────────────
+  const value = {
+    isAuthenticated,
+    isLoggingIn,
+    authToken,
+    currentUser,
+    selectedYear,
+    login,
+    logout,
+    setSelectedYear,
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, selectedYear, currentUser, users, register, updateUser, deleteUser, login, logout, setSelectedYear }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

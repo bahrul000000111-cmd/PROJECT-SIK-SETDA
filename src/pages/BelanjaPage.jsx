@@ -1,7 +1,7 @@
 import React, { useState, useContext, useMemo, useEffect } from 'react';
 import { DpaContext } from '../context/DpaContext';
 import { AuthContext } from '../context/AuthContext';
-import { Trash2, AlertCircle, CheckCircle2, Receipt, Info } from 'lucide-react';
+import { Trash2, AlertCircle, CheckCircle2, Receipt, Info, Loader2 } from 'lucide-react';
 
 const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
@@ -56,6 +56,8 @@ const BelanjaPage = () => {
   const { currentUser } = useContext(AuthContext);
   const isPemeriksa = currentUser?.role === 'Pemeriksa';
   const [form, setForm] = useState(emptyForm);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const programList = useMemo(() => collectByTipe(dpaData, 'Program'), [dpaData]);
   const kegiatanList = useMemo(() => {
@@ -94,21 +96,40 @@ const BelanjaPage = () => {
   const isComplete = form.nomorSpm && form.tanggalSpm && form.programId && form.subKegiatanId && form.uraianBelanjaId && form.uraian && numNominal > 0 && (!form.adaPajak || (form.jenisPajak && form.ntpn && numPajak > 0 && form.tanggalPajak));
   const isDisabled = !isComplete || isOverBudget;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isDisabled) return;
-    addTransaction({
-      id: Date.now(), nomorSpm: form.nomorSpm, tanggalSpm: form.tanggalSpm, jenisSpm: form.jenisSpm,
-      nomorTbp: showTbp ? form.nomorTbp : '-',
-      programId: form.programId, kegiatanId: form.kegiatanId, subKegiatanId: form.subKegiatanId,
-      bagianId: form.programId, bagianName: findBagianName(dpaData, form.subKegiatanId),
-      namaSubKegiatan: `${selectedSk?.kode || ''} - ${selectedSk?.uraian || ''}`,
-      sumberDana: form.sumberDana, uraian: form.uraian, nominal: numNominal,
-      adaPajak: form.adaPajak, jenisPajak: form.adaPajak ? form.jenisPajak : null,
-      ntpn: form.adaPajak ? form.ntpn : null, nominalPajak: form.adaPajak ? numPajak : 0,
-      tanggalPajak: form.adaPajak ? form.tanggalPajak : null,
-    });
-    setForm(emptyForm);
+    if (isDisabled || isSubmitting) return;
+    setSubmitError('');
+    setIsSubmitting(true);
+    try {
+      const result = await addTransaction({
+        nomorSpm:       form.nomorSpm,
+        tanggalSpm:     form.tanggalSpm,
+        jenisSpm:       form.jenisSpm,
+        nomorTbp:       showTbp ? form.nomorTbp : '-',
+        programId:      form.programId,
+        kegiatanId:     form.kegiatanId,
+        subKegiatanId:  form.subKegiatanId,
+        bagianId:       form.programId,
+        bagianName:     findBagianName(dpaData, form.subKegiatanId),
+        namaSubKegiatan:`${selectedSk?.kode || ''} - ${selectedSk?.uraian || ''}`,
+        sumberDana:     form.sumberDana,
+        uraian:         form.uraian,
+        nominal:        numNominal,
+        adaPajak:       form.adaPajak,
+        jenisPajak:     form.adaPajak ? form.jenisPajak : null,
+        ntpn:           form.adaPajak ? form.ntpn : null,
+        nominalPajak:   form.adaPajak ? numPajak : 0,
+        tanggalPajak:   form.adaPajak ? form.tanggalPajak : null,
+      });
+      if (result.success) {
+        setForm(emptyForm);
+      } else {
+        setSubmitError(result.message || 'Gagal menyimpan transaksi.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const totalSeluruh = transactions.reduce((s, t) => s + t.nominal, 0);
@@ -187,7 +208,14 @@ const BelanjaPage = () => {
                   <Field label="Tanggal Pajak" required><input type="date" name="tanggalPajak" value={form.tanggalPajak} onChange={handleChange} className={iCls} /></Field>
                 </div>
               )}
-              <button type="submit" disabled={isDisabled} className={`w-full flex justify-center items-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 mt-2 cursor-pointer ${isDisabled ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md active:scale-[0.98]'}`}><CheckCircle2 size={18} /> Simpan Transaksi</button>
+              {submitError && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-400">
+                  <AlertCircle size={12} className="shrink-0" /> {submitError}
+                </div>
+              )}
+              <button type="submit" disabled={isDisabled || isSubmitting} className={`w-full flex justify-center items-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 mt-2 cursor-pointer ${(isDisabled || isSubmitting) ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md active:scale-[0.98]'}`}>
+                {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Menyimpan...</> : <><CheckCircle2 size={18} /> Simpan Transaksi</>}
+              </button>
             </form>
           </div>
         </div>
