@@ -53,54 +53,68 @@ const transformHierarchyToTree = (rawData) => {
   const hierarchy = extractArray(rawData);
   if (hierarchy.length === 0) return [];
 
-  return hierarchy.map((program) => {
-    const kegiatans = (program.kegiatans || []).map((kegiatan) => {
-      const subKegiatans = (kegiatan.sub_kegiatans || []).map((subKeg) => {
-        const rincianBelanja = (subKeg.uraians || []).map((u) => ({
-          id:            u.id,
-          kode:          u.kode_rekening || String(u.uraian || '').substring(0, 20),
-          uraian:        u.uraian,
-          sumberDana:    u.sumber_dana,
-          totalAnggaran: parseFloat(u.pagu_anggaran) || 0,
-          total:         parseFloat(u.pagu_anggaran) || 0,
-        }));
+  return hierarchy.map((bagian) => {
+    const programs = (bagian.programs || []).map((program) => {
+      const kegiatans = (program.kegiatans || []).map((kegiatan) => {
+        const subKegiatans = (kegiatan.sub_kegiatans || []).map((subKeg) => {
+          const rincianBelanja = (subKeg.uraians || []).map((u) => ({
+            id:            u.id,
+            kode:          u.kode_rekening || String(u.uraian || '').substring(0, 20),
+            uraian:        u.uraian,
+            sumberDana:    u.sumber_dana,
+            totalAnggaran: parseFloat(u.pagu_anggaran) || 0,
+            total:         parseFloat(u.pagu_anggaran) || 0,
+          }));
 
-        const totalSubKeg = rincianBelanja.reduce((s, r) => s + r.totalAnggaran, 0);
+          const totalSubKeg = rincianBelanja.reduce((s, r) => s + r.totalAnggaran, 0);
+
+          return {
+            id:            subKeg.kode_sub_kegiatan,
+            kode:          subKeg.kode_sub_kegiatan,
+            uraian:        subKeg.nama_sub_kegiatan,
+            tipe:          'Sub Kegiatan',
+            totalAnggaran: totalSubKeg,
+            rencanaKas:    totalSubKeg,
+            rincianBelanja,
+          };
+        });
+
+        const totalKeg = subKegiatans.reduce((s, sk) => s + sk.totalAnggaran, 0);
 
         return {
-          id:            subKeg.kode_sub_kegiatan,
-          kode:          subKeg.kode_sub_kegiatan,
-          uraian:        subKeg.nama_sub_kegiatan,
-          tipe:          'Sub Kegiatan',
-          totalAnggaran: totalSubKeg,
-          rencanaKas:    totalSubKeg,
-          rincianBelanja,
+          id:            kegiatan.kode_kegiatan,
+          kode:          kegiatan.kode_kegiatan,
+          uraian:        kegiatan.nama_kegiatan,
+          tipe:          'Kegiatan',
+          totalAnggaran: totalKeg,
+          rencanaKas:    totalKeg,
+          children:      subKegiatans,
         };
       });
 
-      const totalKeg = subKegiatans.reduce((s, sk) => s + sk.totalAnggaran, 0);
+      const totalProg = kegiatans.reduce((s, k) => s + k.totalAnggaran, 0);
 
       return {
-        id:            kegiatan.kode_kegiatan,
-        kode:          kegiatan.kode_kegiatan,
-        uraian:        kegiatan.nama_kegiatan,
-        tipe:          'Kegiatan',
-        totalAnggaran: totalKeg,
-        rencanaKas:    totalKeg,
-        children:      subKegiatans,
+        id:            program.kode_program,
+        kode:          program.kode_program,
+        uraian:        program.nama_program,
+        tipe:          'Program',
+        totalAnggaran: totalProg,
+        rencanaKas:    totalProg,
+        children:      kegiatans,
       };
     });
 
-    const totalProg = kegiatans.reduce((s, k) => s + k.totalAnggaran, 0);
+    const totalBagian = programs.reduce((s, p) => s + p.totalAnggaran, 0);
 
     return {
-      id:            program.kode_program,
-      kode:          program.kode_program,
-      uraian:        program.nama_program,
-      tipe:          'Program',
-      totalAnggaran: totalProg,
-      rencanaKas:    totalProg,
-      children:      kegiatans,
+      id:            bagian.kode_bagian,
+      kode:          bagian.kode_bagian,
+      uraian:        bagian.nama_bagian,
+      tipe:          'Bagian',
+      totalAnggaran: totalBagian,
+      rencanaKas:    totalBagian,
+      children:      programs,
     };
   });
 };

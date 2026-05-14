@@ -186,7 +186,7 @@ const DashboardPage = () => {
               ) : dpaData.map((data) => {
                 const anggaran  = data.totalAnggaran || 0;
                 const realisasi = transactions
-                  .filter(t => t.bagianId === data.id)
+                  .filter(t => t.bagianName === data.uraian)
                   .reduce((sum, t) => sum + (t.nominal || 0), 0);
                 const pctAng = maxAnggaran > 0 ? (anggaran  / maxAnggaran) * 100 : 0;
                 const pctRea = maxAnggaran > 0 ? (realisasi / maxAnggaran) * 100 : 0;
