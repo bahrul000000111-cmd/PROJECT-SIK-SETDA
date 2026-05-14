@@ -70,7 +70,6 @@ const WidgetCard = ({ icon: Icon, iconColor, iconBg, title, linkLabel, onLink, c
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const DashboardPage = () => {
-  const [activeStatTab, setActiveStatTab] = useState('Belanja');
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const { widgetVisibility } = useOutletContext();
   const navigate = useNavigate();
@@ -324,27 +323,11 @@ const DashboardPage = () => {
       {/* ── Statistik Section ─────────────────────────────────────────────── */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mt-2">
         <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Statistik</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Menampilkan anggaran dan realisasi di setiap SKPD</p>
-          <div className="inline-flex bg-gray-100 dark:bg-gray-900 p-1 rounded-full border border-gray-200 dark:border-gray-700">
-            {['Pendapatan', 'Belanja'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveStatTab(tab)}
-                className={`px-5 py-1.5 text-sm font-medium rounded-full transition-all cursor-pointer ${
-                  activeStatTab === tab
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Statistik Realisasi Belanja</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Menampilkan grafik realisasi belanja per bulan</p>
         </div>
         <div className="p-6 flex items-end justify-between min-h-[300px] gap-2 pt-10">
-          {activeStatTab === 'Belanja' ? (
-            bulanLabels.map((lbl, idx) => {
+          {bulanLabels.map((lbl, idx) => {
               const val = bulananStats[idx];
               const pct = maxBulanan > 0 ? (val / maxBulanan) * 100 : 0;
               return (
@@ -361,15 +344,7 @@ const DashboardPage = () => {
                 </div>
               );
             })
-          ) : (
-            <div className="w-full flex items-center justify-center min-h-[200px]">
-              <EmptyState
-                icon={SearchX}
-                title="Data Tidak Ditemukan"
-                description="Maaf, data pendapatan belum tersedia di modul ini."
-              />
-            </div>
-          )}
+          }
         </div>
       </div>
 

@@ -52,7 +52,7 @@ const PenggunaPage = () => {
   }, []);
 
   const filtered = users.filter(u =>
-    u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u.nama_lengkap?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.nip?.includes(searchQuery)
   );
@@ -102,7 +102,7 @@ const PenggunaPage = () => {
           return;
         }
         await api.post('/users', {
-          name: form.namaLengkap,
+          nama_lengkap: form.namaLengkap,
           username: form.username,
           password: form.password,
           role: form.role,
@@ -114,7 +114,7 @@ const PenggunaPage = () => {
           return;
         }
         const payload = {
-          name: form.namaLengkap,
+          nama_lengkap: form.namaLengkap,
           username: form.username,
           role: form.role,
         };
@@ -262,14 +262,14 @@ const PenggunaPage = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => openEditModal({ ...user, namaLengkap: user.name })}
+                          onClick={() => openEditModal(user)}
                           title="Edit Data"
                           className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
                         >
                           <Pencil size={15} />
                         </button>
                         <button
-                          onClick={() => openResetModal({ ...user, namaLengkap: user.name })}
+                          onClick={() => openResetModal(user)}
                           title="Reset Password"
                           className="p-1.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-md transition-colors"
                         >
@@ -290,7 +290,7 @@ const PenggunaPage = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-mono text-gray-600 dark:text-gray-400">{user.nip || '-'}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{user.name}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{user.nama_lengkap}</td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">@{user.username}</td>
                   </tr>
                 ))
