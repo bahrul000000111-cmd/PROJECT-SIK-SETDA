@@ -52,10 +52,16 @@ const sCls = iCls + " appearance-none";
 const dCls = " opacity-50 cursor-not-allowed";
 
 const BelanjaPage = () => {
-  const { dpaData, transactions, addTransaction, deleteTransaction } = useContext(DpaContext);
+  const { dpaData: rawDpaData, transactions: rawTransactions, addTransaction, deleteTransaction } = useContext(DpaContext);
   const { currentUser } = useContext(AuthContext);
   const isPemeriksa = currentUser?.role === 'Pemeriksa';
+
+  // Pastikan selalu berupa array agar tidak crash saat data sedang di-fetch
+  const dpaData      = Array.isArray(rawDpaData)      ? rawDpaData      : [];
+  const transactions = Array.isArray(rawTransactions) ? rawTransactions : [];
+
   const [form, setForm] = useState(emptyForm);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 

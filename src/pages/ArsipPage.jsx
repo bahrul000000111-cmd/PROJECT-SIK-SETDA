@@ -15,9 +15,13 @@ const JENIS_ICON = { 'SPM': FileText, 'Dokumen Lainnya': File };
 const emptyForm = { nomorDokumen: '', jenisDokumen: 'SPM', tanggal: '', fileDokumen: null, fileNama: '', keterangan: '' };
 
 const ArsipPage = () => {
-  const { arsipDokumen, addArsip, deleteArsip } = useContext(DpaContext);
+  const { arsipDokumen: rawArsip, addArsip, deleteArsip } = useContext(DpaContext);
   const { currentUser } = useContext(AuthContext);
   const isPemeriksa = currentUser?.role === 'Pemeriksa';
+
+  // Pastikan selalu berupa array agar tidak crash saat data sedang di-fetch
+  const arsipDokumen = Array.isArray(rawArsip) ? rawArsip : [];
+
 
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);

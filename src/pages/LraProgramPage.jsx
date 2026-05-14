@@ -16,7 +16,8 @@ const formatPersen = (v) =>
   isNaN(v) || !isFinite(v) ? '0.00%' : `${v.toFixed(2)}%`;
 
 // ─── LRA Brain: Recursive Enrichment ─────────────────────────────────────────
-const enrichNode = (node, transactions) => {
+const enrichNode = (node, txList) => {
+  const transactions = Array.isArray(txList) ? txList : [];
   const enriched = { ...node };
 
   if (node.children && node.children.length > 0) {
@@ -30,14 +31,17 @@ const enrichNode = (node, transactions) => {
   }
 
   const anggaran = enriched.totalAnggaran || 0;
-  enriched.sisaAnggaran = anggaran - enriched.realisasi;
+  enriched.sisaAnggaran  = anggaran - enriched.realisasi;
   enriched.capaianPersen = anggaran > 0 ? (enriched.realisasi / anggaran) * 100 : 0;
 
   return enriched;
 };
 
-const generateLraData = (dpaTree, transactions) =>
-  (dpaTree || []).map(node => enrichNode(node, transactions));
+const generateLraData = (dpaTree, txList) => {
+  const tree = Array.isArray(dpaTree) ? dpaTree : [];
+  const txs  = Array.isArray(txList)  ? txList  : [];
+  return tree.map(node => enrichNode(node, txs));
+};
 
 // ─── Capaian Badge ────────────────────────────────────────────────────────────
 const CapaianBadge = ({ persen }) => {
@@ -167,8 +171,12 @@ const collectAllIds = (nodes) => {
 
 // ─── Main LraPage ─────────────────────────────────────────────────────────────
 const LraPage = () => {
-  const { dpaData, transactions } = useContext(DpaContext);
+  const { dpaData: rawDpaData, transactions: rawTransactions } = useContext(DpaContext);
   const { selectedYear } = useContext(AuthContext);
+
+  // Pastikan selalu berupa array sebelum diproses
+  const dpaData      = Array.isArray(rawDpaData)      ? rawDpaData      : [];
+  const transactions = Array.isArray(rawTransactions) ? rawTransactions : [];
 
   // Enrich tree with realisasi data
   const lraData = useMemo(() => generateLraData(dpaData, transactions), [dpaData, transactions]);
