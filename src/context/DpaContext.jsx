@@ -70,7 +70,7 @@ const transformHierarchyToTree = (rawData) => {
         return {
           id:            subKeg.kode_sub_kegiatan,
           kode:          subKeg.kode_sub_kegiatan,
-          uraian:        subKeg.nama_sub_kegiatan || subKeg.kode_sub_kegiatan,
+          uraian:        subKeg.nama_sub_kegiatan,
           tipe:          'Sub Kegiatan',
           totalAnggaran: totalSubKeg,
           rencanaKas:    totalSubKeg,
@@ -83,7 +83,7 @@ const transformHierarchyToTree = (rawData) => {
       return {
         id:            kegiatan.kode_kegiatan,
         kode:          kegiatan.kode_kegiatan,
-        uraian:        kegiatan.nama_kegiatan || kegiatan.kode_kegiatan,
+        uraian:        kegiatan.nama_kegiatan,
         tipe:          'Kegiatan',
         totalAnggaran: totalKeg,
         rencanaKas:    totalKeg,
@@ -96,7 +96,7 @@ const transformHierarchyToTree = (rawData) => {
     return {
       id:            program.kode_program,
       kode:          program.kode_program,
-      uraian:        program.nama_program || program.kode_program,
+      uraian:        program.nama_program,
       tipe:          'Program',
       totalAnggaran: totalProg,
       rencanaKas:    totalProg,
