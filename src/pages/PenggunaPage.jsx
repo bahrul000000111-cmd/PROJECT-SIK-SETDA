@@ -1,7 +1,8 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { Plus, Pencil, Trash2, KeyRound, X, Users, Shield, Search, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, KeyRound, X, Users, Shield, Search, AlertTriangle, Loader2 } from 'lucide-react';
+import api from '../api';
 
 // Admin tidak boleh membuat akun Admin baru via UI (prinsip keamanan otoritas utama)
 const JABATAN_OPTIONS = ['Pengguna/Staf', 'Bendahara', 'Pemeriksa'];
@@ -16,7 +17,7 @@ const initialFormState = {
 };
 
 const PenggunaPage = () => {
-  const { users, register, updateUser, deleteUser, currentUser } = useContext(AuthContext);
+  const { currentUser } = useContext(AuthContext);
 
   // Guard: hanya Admin yang boleh mengakses halaman ini
   if (currentUser?.role !== 'Admin') {
@@ -29,10 +30,29 @@ const PenggunaPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [deleteConfirm, setDeleteConfirm] = useState(null); // username to delete
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // id to delete
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/users');
+      setUsers(res.data.data || []);
+    } catch (err) {
+      console.error(err);
+      setError('Gagal mengambil data pengguna');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const filtered = users.filter(u =>
-    u.namaLengkap?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.nip?.includes(searchQuery)
   );
@@ -71,48 +91,64 @@ const PenggunaPage = () => {
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (modalMode === 'add') {
-      if (!form.nip || !form.namaLengkap || !form.username || !form.password) {
-        setError('Semua field wajib diisi!');
-        return;
+    try {
+      if (modalMode === 'add') {
+        if (!form.namaLengkap || !form.username || !form.password) {
+          setError('Semua field wajib diisi!');
+          return;
+        }
+        await api.post('/users', {
+          name: form.namaLengkap,
+          username: form.username,
+          password: form.password,
+          role: form.role,
+        });
+        setSuccessMsg('Akun berhasil ditambahkan!');
+      } else if (modalMode === 'edit') {
+        if (!form.namaLengkap) {
+          setError('Nama Lengkap wajib diisi!');
+          return;
+        }
+        const payload = {
+          name: form.namaLengkap,
+          username: form.username,
+          role: form.role,
+        };
+        await api.put(`/users/${editTarget.id}`, payload);
+        setSuccessMsg('Data pengguna berhasil diperbarui!');
+      } else if (modalMode === 'reset') {
+        if (!form.password) {
+          setError('Password baru wajib diisi!');
+          return;
+        }
+        await api.put(`/users/${editTarget.id}`, { password: form.password });
+        setSuccessMsg('Password berhasil direset!');
       }
-      const result = register(form);
-      if (!result.success) {
-        setError(result.message);
-        return;
-      }
-      setSuccessMsg('Akun berhasil ditambahkan!');
-    } else if (modalMode === 'edit') {
-      if (!form.nip || !form.namaLengkap) {
-        setError('NIP dan Nama Lengkap wajib diisi!');
-        return;
-      }
-      const updated = { ...editTarget, ...form };
-      if (!form.password) delete updated.password; // keep old password if not changed
-      updateUser(updated);
-      setSuccessMsg('Data pengguna berhasil diperbarui!');
-    } else if (modalMode === 'reset') {
-      if (!form.password) {
-        setError('Password baru wajib diisi!');
-        return;
-      }
-      updateUser({ ...editTarget, password: form.password });
-      setSuccessMsg('Password berhasil direset!');
-    }
 
-    closeModal();
-    setTimeout(() => setSuccessMsg(''), 3000);
+      fetchUsers();
+      closeModal();
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.message || 'Terjadi kesalahan pada server');
+    }
   };
 
-  const handleDelete = (username) => {
-    deleteUser(username);
-    setDeleteConfirm(null);
-    setSuccessMsg('Akun berhasil dihapus!');
-    setTimeout(() => setSuccessMsg(''), 3000);
+  const handleDelete = async (id) => {
+    try {
+      await api.delete(`/users/${id}`);
+      setDeleteConfirm(null);
+      setSuccessMsg('Akun berhasil dihapus!');
+      fetchUsers();
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err) {
+      console.error(err);
+      setError('Gagal menghapus akun');
+    }
   };
 
   const roleColor = (role) => {
@@ -206,7 +242,14 @@ const PenggunaPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {filtered.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan="5" className="px-6 py-16 text-center">
+                    <Loader2 size={32} className="mx-auto mb-3 animate-spin text-blue-500" />
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Memuat data pengguna...</p>
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="px-6 py-16 text-center text-sm text-gray-400 dark:text-gray-500">
                     <Users size={40} className="mx-auto mb-3 text-gray-300 dark:text-gray-700" />
@@ -215,25 +258,25 @@ const PenggunaPage = () => {
                 </tr>
               ) : (
                 filtered.map((user, idx) => (
-                  <tr key={user.username} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+                  <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => openEditModal(user)}
+                          onClick={() => openEditModal({ ...user, namaLengkap: user.name })}
                           title="Edit Data"
                           className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
                         >
                           <Pencil size={15} />
                         </button>
                         <button
-                          onClick={() => openResetModal(user)}
+                          onClick={() => openResetModal({ ...user, namaLengkap: user.name })}
                           title="Reset Password"
                           className="p-1.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-md transition-colors"
                         >
                           <KeyRound size={15} />
                         </button>
                         <button
-                          onClick={() => setDeleteConfirm(user.username)}
+                          onClick={() => setDeleteConfirm(user)}
                           title="Hapus Akun"
                           className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
                         >
@@ -247,7 +290,7 @@ const PenggunaPage = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-mono text-gray-600 dark:text-gray-400">{user.nip || '-'}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{user.namaLengkap}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{user.name}</td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">@{user.username}</td>
                   </tr>
                 ))
@@ -395,7 +438,7 @@ const PenggunaPage = () => {
             </div>
             <h3 className="font-bold text-gray-900 dark:text-white mb-2">Hapus Akun Pengguna?</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-              Akun <span className="font-semibold text-gray-900 dark:text-white">@{deleteConfirm}</span> akan dihapus secara permanen dan tidak dapat dikembalikan.
+              Akun <span className="font-semibold text-gray-900 dark:text-white">@{deleteConfirm.username}</span> akan dihapus secara permanen dan tidak dapat dikembalikan.
             </p>
             <div className="flex gap-3">
               <button
@@ -405,7 +448,7 @@ const PenggunaPage = () => {
                 Batal
               </button>
               <button
-                onClick={() => handleDelete(deleteConfirm)}
+                onClick={() => handleDelete(deleteConfirm.id)}
                 className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors active:scale-[0.98] cursor-pointer"
               >
                 Hapus

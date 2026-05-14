@@ -6,6 +6,7 @@ import { AuthContext } from '../context/AuthContext';
 import StatCard from '../components/StatCard';
 import EmptyState from '../components/EmptyState';
 import GuideBanner from '../components/GuideBanner';
+import GuideModal from '../components/GuideModal';
 import {
   Wallet,
   ShoppingBag,
@@ -70,6 +71,7 @@ const WidgetCard = ({ icon: Icon, iconColor, iconBg, title, linkLabel, onLink, c
 // ─── Main Component ───────────────────────────────────────────────────────────
 const DashboardPage = () => {
   const [activeStatTab, setActiveStatTab] = useState('Belanja');
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const { widgetVisibility } = useOutletContext();
   const navigate = useNavigate();
 
@@ -123,6 +125,23 @@ const DashboardPage = () => {
     const vals = dpaData.map(d => d?.totalAnggaran || 0);
     return vals.length > 0 ? Math.max(...vals, 1) : 1;
   }, [dpaData]);
+
+  // ── Grafik Bulanan ──
+  const bulananStats = useMemo(() => {
+    const data = Array(12).fill(0);
+    transactions.forEach(t => {
+      if (t.tanggalSpm) {
+        const date = new Date(t.tanggalSpm);
+        if (!isNaN(date)) {
+          data[date.getMonth()] += (t.nominal || 0);
+        }
+      }
+    });
+    return data;
+  }, [transactions]);
+  
+  const maxBulanan = Math.max(...bulananStats, 1);
+  const bulanLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
 
   return (
     <div className="flex flex-col gap-6 pb-10">
@@ -323,19 +342,43 @@ const DashboardPage = () => {
             ))}
           </div>
         </div>
-        <div className="p-10 flex items-center justify-center min-h-[250px]">
-          <EmptyState
-            icon={SearchX}
-            title="Data Tidak Ditemukan"
-            description={`Maaf, tidak ada data ${activeStatTab.toLowerCase()} yang dapat ditampilkan saat ini.`}
-          />
+        <div className="p-6 flex items-end justify-between min-h-[300px] gap-2 pt-10">
+          {activeStatTab === 'Belanja' ? (
+            bulanLabels.map((lbl, idx) => {
+              const val = bulananStats[idx];
+              const pct = maxBulanan > 0 ? (val / maxBulanan) * 100 : 0;
+              return (
+                <div key={lbl} className="flex flex-col items-center flex-1 group">
+                  <div className="relative w-full max-w-[40px] h-48 bg-gray-100 dark:bg-gray-700 rounded-t-md overflow-visible flex items-end justify-center">
+                    {/* Tooltip */}
+                    <div className="absolute -top-10 bg-gray-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                      {formatCurrency(val)}
+                    </div>
+                    {/* Bar */}
+                    <div className="w-full bg-blue-500 dark:bg-blue-600 rounded-t-md transition-all duration-700" style={{ height: `${pct}%` }} />
+                  </div>
+                  <span className="text-xs font-medium text-gray-500 mt-3">{lbl}</span>
+                </div>
+              );
+            })
+          ) : (
+            <div className="w-full flex items-center justify-center min-h-[200px]">
+              <EmptyState
+                icon={SearchX}
+                title="Data Tidak Ditemukan"
+                description="Maaf, data pendapatan belum tersedia di modul ini."
+              />
+            </div>
+          )}
         </div>
       </div>
 
       {/* ── Guide Banner ──────────────────────────────────────────────────── */}
       <div className="mt-2">
-        <GuideBanner />
+        <GuideBanner onOpenGuide={() => setIsGuideModalOpen(true)} />
       </div>
+
+      <GuideModal isOpen={isGuideModalOpen} onClose={() => setIsGuideModalOpen(false)} />
 
     </div>
   );

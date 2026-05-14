@@ -1,7 +1,7 @@
 import React from 'react';
 import { DownloadCloud, BookCopy } from 'lucide-react';
 
-const GuideBanner = () => {
+const GuideBanner = ({ onOpenGuide }) => {
   return (
     <div className="w-full rounded-2xl bg-gradient-to-r from-emerald-900 via-teal-800 to-cyan-900 overflow-hidden relative shadow-lg">
       {/* Decorative Elements */}
@@ -14,9 +14,9 @@ const GuideBanner = () => {
           <p className="text-emerald-50 text-sm md:text-base leading-relaxed mb-6 opacity-90">
             Pelajari cara menggunakan sistem Penatausahaan dengan mudah. Unduh panduan langkah demi langkah untuk membantu Anda mengelola data dan memahami alur kerja aplikasi secara menyeluruh.
           </p>
-          <button className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold py-2.5 px-6 rounded-lg transition-all shadow-sm hover:shadow cursor-pointer">
-            <DownloadCloud size={18} strokeWidth={2} />
-            Unduh Sekarang
+          <button onClick={onOpenGuide} className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold py-2.5 px-6 rounded-lg transition-all shadow-sm hover:shadow cursor-pointer">
+            <BookCopy size={18} strokeWidth={2} />
+            Lihat Panduan
           </button>
         </div>
         
