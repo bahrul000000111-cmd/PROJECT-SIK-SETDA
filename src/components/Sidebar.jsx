@@ -95,8 +95,8 @@ const Sidebar = ({ isSidebarOpen }) => {
           {/* ── Laporan ─── */}
           <SidebarHeader title="Laporan" isSidebarOpen={isSidebarOpen} />
 
-          {/* LRA: Admin, Bendahara & Pemeriksa */}
-          {(isAdmin || isBendahara || isPemeriksa) && (
+          {/* LRA & LRA Program: Admin, Bendahara, Pemeriksa, dan Pengguna/Staf */}
+          {(isAdmin || isBendahara || isPemeriksa || isPengguna) && (
             <>
               <SidebarItem icon={FileText} label="LRA" to="/lra" isSidebarOpen={isSidebarOpen} />
               <SidebarItem icon={Activity} label="LRA Perprogram" to="/lra-program" isSidebarOpen={isSidebarOpen} />

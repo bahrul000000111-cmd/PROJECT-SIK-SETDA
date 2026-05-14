@@ -1,4 +1,4 @@
-import React, { createContext, useState } from 'react';
+import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { dpaNestedData } from '../utils/dataStore';
 
 export const DpaContext = createContext();
@@ -36,6 +36,14 @@ const safeLoadLS = (key, fallback = []) => {
   }
 };
 
+const safeSaveLS = (key, value) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.error(`[DpaContext] localStorage save error for key "${key}":`, e);
+  }
+};
+
 // ─── Provider ─────────────────────────────────────────────────────────────────
 export const DpaProvider = ({ children }) => {
 
@@ -45,36 +53,60 @@ export const DpaProvider = ({ children }) => {
   // ── Transactions (Belanja) ──
   const [transactions, setTransactionsState] = useState(() => safeLoadLS('transactions'));
 
-  const setTransactions = (txs) => {
-    setTransactionsState(txs);
-    localStorage.setItem('transactions', JSON.stringify(txs));
-  };
-
-  const addTransaction = (tx) => {
-    setTransactions(prev => [...prev, tx]);
-  };
-
-  const deleteTransaction = (id) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
-  };
-
-  // ── Arsip Dokumen (diangkat dari ArsipPage) ──
+  // ── Arsip Dokumen ──
   const [arsipDokumen, setArsipState] = useState(() => safeLoadLS('arsipDokumen'));
 
-  const setArsip = (data) => {
+  // ─── useEffect: Sinkronisasi Persisten ke localStorage ───────────────────
+  // Setiap kali `transactions` berubah (tambah/hapus), otomatis simpan ke storage.
+  useEffect(() => {
+    safeSaveLS('transactions', transactions);
+  }, [transactions]);
+
+  // Setiap kali `arsipDokumen` berubah (tambah/hapus), otomatis simpan ke storage.
+  useEffect(() => {
+    safeSaveLS('arsipDokumen', arsipDokumen);
+  }, [arsipDokumen]);
+
+  // ─── Transaction Actions ──────────────────────────────────────────────────
+  const setTransactions = useCallback((txs) => {
+    // Mendukung functional updater maupun nilai langsung
+    setTransactionsState(txs);
+  }, []);
+
+  const addTransaction = useCallback((tx) => {
+    setTransactionsState(prev => [...prev, tx]);
+  }, []);
+
+  const deleteTransaction = useCallback((id) => {
+    setTransactionsState(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  const updateTransaction = useCallback((id, changes) => {
+    setTransactionsState(prev =>
+      prev.map(t => t.id === id ? { ...t, ...changes } : t)
+    );
+  }, []);
+
+  // ─── Arsip Actions ────────────────────────────────────────────────────────
+  const setArsip = useCallback((data) => {
     setArsipState(data);
-    localStorage.setItem('arsipDokumen', JSON.stringify(data));
-  };
+  }, []);
 
-  const addArsip = (doc) => {
-    setArsip(prev => [doc, ...prev]);
-  };
+  const addArsip = useCallback((doc) => {
+    setArsipState(prev => [doc, ...prev]);
+  }, []);
 
-  const deleteArsip = (id) => {
-    setArsip(prev =>
+  const updateArsip = useCallback((id, changes) => {
+    setArsipState(prev =>
+      prev.map(a => a.id === id ? { ...a, ...changes } : a)
+    );
+  }, []);
+
+  const deleteArsip = useCallback((id) => {
+    setArsipState(prev =>
       prev.filter(a => a.id !== id).map((a, i) => ({ ...a, no: i + 1 }))
     );
-  };
+  }, []);
 
   return (
     <DpaContext.Provider value={{
@@ -83,11 +115,15 @@ export const DpaProvider = ({ children }) => {
       setDpaData,
       // Transaksi Belanja
       transactions,
+      setTransactions,
       addTransaction,
+      updateTransaction,
       deleteTransaction,
       // Arsip Dokumen
       arsipDokumen,
+      setArsip,
       addArsip,
+      updateArsip,
       deleteArsip,
     }}>
       {children}
