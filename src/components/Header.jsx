@@ -149,21 +149,17 @@ const Header = ({ isSidebarOpen, toggleSidebar, widgetVisibility, toggleWidget }
           {/* Kiri Kanan-Area: Sapaan & Deretan Badge */}
           <div className="flex flex-col justify-center gap-1.5">
             <h1 className="font-bold text-lg lg:text-xl text-gray-900 dark:text-white leading-none truncate transition-colors duration-300">
-              {greeting} {currentUser.namaLengkap || currentUser.nama || 'Pengguna'}
+              {greeting} {currentUser.nama_lengkap || currentUser.namaLengkap || currentUser.name || currentUser.username || 'Pengguna'}
             </h1>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap text-xs text-gray-600 dark:text-gray-400 font-medium">
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${roleColorClass}`}>
                 {currentUser.role}
               </span>
-              <span className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-transparent dark:border-gray-700 text-[10px] font-medium px-2 py-0.5 rounded-md transition-colors duration-300">
-                {currentUser.instansi}
-              </span>
-              <span className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-transparent dark:border-gray-700 text-[10px] font-medium px-2 py-0.5 rounded-md transition-colors duration-300">
-                NIP: {currentUser.nip}
-              </span>
-              <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold px-3 py-1 rounded-md border border-blue-100 dark:border-blue-800 transition-colors duration-300 flex items-center">
-                SIK SETDA Tahun {selectedYear}
-              </span>
+              <span className="text-gray-800 dark:text-gray-200 font-semibold">Sekretariat Daerah</span>
+              <span className="text-gray-300 dark:text-gray-600">|</span>
+              <span>NIP: {currentUser.nip || '-'}</span>
+              <span className="text-gray-300 dark:text-gray-600">|</span>
+              <span className="text-blue-600 dark:text-blue-400 font-bold">SIK SETDA Tahun {selectedYear}</span>
             </div>
           </div>
 
