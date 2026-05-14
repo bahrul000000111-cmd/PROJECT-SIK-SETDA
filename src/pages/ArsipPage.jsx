@@ -31,12 +31,16 @@ const ArsipPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(null); // id yang sedang dihapus
 
-  const filtered = useMemo(() =>
-    (arsipDokumen || []).filter(a =>
-      a.nomorDokumen.toLowerCase().includes(search.toLowerCase()) ||
-      (a.keterangan || '').toLowerCase().includes(search.toLowerCase()) ||
-      a.jenisDokumen.toLowerCase().includes(search.toLowerCase())
-    ), [arsipDokumen, search]);
+  const filtered = useMemo(() => {
+    const safe = Array.isArray(arsipDokumen) ? arsipDokumen : [];
+    if (!search.trim()) return safe;
+    const q = search.toLowerCase();
+    return safe.filter(a =>
+      (a?.nomorDokumen  || '').toLowerCase().includes(q) ||
+      (a?.keterangan   || '').toLowerCase().includes(q) ||
+      (a?.jenisDokumen || '').toLowerCase().includes(q)
+    );
+  }, [arsipDokumen, search]);
 
   const handleChange = (e) => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
 
@@ -90,7 +94,13 @@ const ArsipPage = () => {
     }
   };
 
-  const statByJenis = useMemo(() => JENIS_DOKUMEN.map(j => ({ jenis: j, count: (arsipDokumen || []).filter(a => a.jenisDokumen === j).length })), [arsipDokumen]);
+  const statByJenis = useMemo(() => {
+    const safe = Array.isArray(arsipDokumen) ? arsipDokumen : [];
+    return JENIS_DOKUMEN.map(j => ({
+      jenis: j,
+      count: safe.filter(a => a?.jenisDokumen === j).length,
+    }));
+  }, [arsipDokumen]);
 
   const iCls = "w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none";
 

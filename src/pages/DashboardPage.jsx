@@ -73,8 +73,13 @@ const DashboardPage = () => {
   const { widgetVisibility } = useOutletContext();
   const navigate = useNavigate();
 
-  const { dpaData, transactions, arsipDokumen } = useContext(DpaContext);
+  const { dpaData: rawDpaData, transactions: rawTransactions, arsipDokumen: rawArsip } = useContext(DpaContext);
   const { currentUser } = useContext(AuthContext);
+
+  // Pastikan selalu berupa array saat render pertama (sebelum API selesai)
+  const dpaData      = Array.isArray(rawDpaData)      ? rawDpaData      : [];
+  const transactions = Array.isArray(rawTransactions) ? rawTransactions : [];
+  const arsipDokumen = Array.isArray(rawArsip)        ? rawArsip        : [];
 
   const role = currentUser?.role;
   const isAdmin     = role === 'Admin';
@@ -85,11 +90,11 @@ const DashboardPage = () => {
 
   // ── Kalkulasi Keuangan (dari data nyata) ──
   const totalAnggaran = useMemo(
-    () => dpaData.reduce((sum, item) => sum + (item.totalAnggaran || 0), 0),
+    () => dpaData.reduce((sum, item) => sum + (item?.totalAnggaran || 0), 0),
     [dpaData]
   );
   const totalBelanja = useMemo(
-    () => transactions.reduce((sum, t) => sum + (t.nominal || 0), 0),
+    () => transactions.reduce((sum, t) => sum + (t?.nominal || 0), 0),
     [transactions]
   );
   const saldo = totalAnggaran - totalBelanja;
@@ -99,25 +104,25 @@ const DashboardPage = () => {
 
   // ── Arsip Terbaru (5 terbaru berdasarkan id/tanggal) ──
   const arsipTerbaru = useMemo(() => {
-    if (!arsipDokumen?.length) return [];
+    if (!arsipDokumen.length) return [];
     return [...arsipDokumen]
-      .sort((a, b) => b.id - a.id) // id = Date.now() → terbaru di atas
+      .sort((a, b) => (b?.id || 0) - (a?.id || 0))
       .slice(0, 5);
   }, [arsipDokumen]);
 
   // ── Transaksi Terbaru (5 terbaru) ──
   const transaksiTerbaru = useMemo(() => {
-    if (!transactions?.length) return [];
+    if (!transactions.length) return [];
     return [...transactions]
-      .sort((a, b) => b.id - a.id)
+      .sort((a, b) => (b?.id || 0) - (a?.id || 0))
       .slice(0, 5);
   }, [transactions]);
 
   // ── Grafik per Bagian ──
-  const maxAnggaran = useMemo(
-    () => Math.max(...dpaData.map(d => d.totalAnggaran || 0), 1),
-    [dpaData]
-  );
+  const maxAnggaran = useMemo(() => {
+    const vals = dpaData.map(d => d?.totalAnggaran || 0);
+    return vals.length > 0 ? Math.max(...vals, 1) : 1;
+  }, [dpaData]);
 
   return (
     <div className="flex flex-col gap-6 pb-10">

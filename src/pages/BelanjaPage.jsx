@@ -93,7 +93,9 @@ const BelanjaPage = () => {
 
   const selectedSk = useMemo(() => findNode(dpaData, form.subKegiatanId), [dpaData, form.subKegiatanId]);
   const totalDpa = selectedSk?.totalAnggaran || 0;
-  const totalTerpakai = transactions.filter(t => t.subKegiatanId === form.subKegiatanId).reduce((s, t) => s + t.nominal, 0);
+  const totalTerpakai = (Array.isArray(transactions) ? transactions : [])
+    .filter(t => t?.subKegiatanId === form.subKegiatanId)
+    .reduce((s, t) => s + (t?.nominal || 0), 0);
   const sisaPagu = totalDpa - totalTerpakai;
   const numNominal = toNumeric(form.nominal);
   const numPajak = toNumeric(form.nominalPajak);
@@ -138,7 +140,7 @@ const BelanjaPage = () => {
     }
   };
 
-  const totalSeluruh = transactions.reduce((s, t) => s + t.nominal, 0);
+  const totalSeluruh = (Array.isArray(transactions) ? transactions : []).reduce((s, t) => s + (t?.nominal || 0), 0);
 
   return (
     <div className="flex flex-col gap-6 pb-10">

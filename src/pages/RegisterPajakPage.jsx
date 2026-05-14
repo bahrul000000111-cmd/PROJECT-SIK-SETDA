@@ -6,20 +6,26 @@ const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
 
 const RegisterPajakPage = () => {
-  const { transactions } = useContext(DpaContext);
+  const { transactions: rawTransactions } = useContext(DpaContext);
+
+  // Pastikan selalu berupa array — data mungkin belum tersedia saat render pertama
+  const transactions = Array.isArray(rawTransactions) ? rawTransactions : [];
 
   // Filter hanya transaksi yang ada pajak
   const pajakList = useMemo(() =>
     transactions
-      .filter(t => t.adaPajak)
-      .sort((a, b) => b.id - a.id),
+      .filter(t => t?.adaPajak)
+      .sort((a, b) => (b?.id || 0) - (a?.id || 0)),
     [transactions]
   );
 
-  const totalPajak = useMemo(() => pajakList.reduce((s, t) => s + (t.nominalPajak || 0), 0), [pajakList]);
+  const totalPajak = useMemo(
+    () => pajakList.reduce((s, t) => s + (t?.nominalPajak || 0), 0),
+    [pajakList]
+  );
 
   const countByJenis = useMemo(() => pajakList.reduce((acc, t) => {
-    const j = t.jenisPajak || 'Lainnya';
+    const j = t?.jenisPajak || 'Lainnya';
     acc[j] = (acc[j] || 0) + 1;
     return acc;
   }, {}), [pajakList]);

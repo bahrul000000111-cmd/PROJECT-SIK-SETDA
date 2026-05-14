@@ -183,12 +183,13 @@ const LraPage = () => {
 
   // Grand totals
   const grandTotal = useMemo(() => {
-    const anggaran = lraData.reduce((s, n) => s + (n.totalAnggaran || 0), 0);
-    const realisasi = lraData.reduce((s, n) => s + (n.realisasi || 0), 0);
+    const safe = Array.isArray(lraData) ? lraData : [];
+    const anggaran  = safe.reduce((s, n) => s + (n.totalAnggaran || 0), 0);
+    const realisasi = safe.reduce((s, n) => s + (n.realisasi    || 0), 0);
     return {
       anggaran,
       realisasi,
-      sisa: anggaran - realisasi,
+      sisa:   anggaran - realisasi,
       persen: anggaran > 0 ? (realisasi / anggaran) * 100 : 0,
     };
   }, [lraData]);

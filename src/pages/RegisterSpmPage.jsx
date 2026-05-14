@@ -6,11 +6,17 @@ const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
 
 const RegisterSpmPage = () => {
-  const { transactions } = useContext(DpaContext);
+  const { transactions: rawTransactions } = useContext(DpaContext);
 
-  const totalNominal = useMemo(() => transactions.reduce((s, t) => s + (t.nominal || 0), 0), [transactions]);
+  // Pastikan selalu berupa array — data mungkin belum tersedia saat render pertama
+  const transactions = Array.isArray(rawTransactions) ? rawTransactions : [];
+
+  const totalNominal = useMemo(
+    () => transactions.reduce((s, t) => s + (t?.nominal || 0), 0),
+    [transactions]
+  );
   const countByJenis = useMemo(() => transactions.reduce((acc, t) => {
-    const j = t.jenisSpm || 'Lainnya';
+    const j = t?.jenisSpm || 'Lainnya';
     acc[j] = (acc[j] || 0) + 1;
     return acc;
   }, {}), [transactions]);
