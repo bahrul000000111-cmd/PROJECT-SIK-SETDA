@@ -84,6 +84,23 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
   const styles = getTypeStyles(node.tipe);
   const IconType = styles.icon;
 
+  const validRincian = (node.rincianBelanja || []).filter((item, index, self) => {
+      const hasChildren = self.some(other => 
+          other.kode !== item.kode && other.kode.startsWith(item.kode)
+      );
+      return !hasChildren;
+  });
+
+  const totalOperasi = validRincian
+      .filter(item => item.kode && String(item.kode).startsWith('5.1'))
+      .reduce((sum, item) => sum + (item.total || item.totalAnggaran || 0), 0);
+
+  const totalModal = validRincian
+      .filter(item => item.kode && String(item.kode).startsWith('5.2'))
+      .reduce((sum, item) => sum + (item.total || item.totalAnggaran || 0), 0);
+
+  const totalDaerah = totalOperasi + totalModal;
+
   return (
     <React.Fragment>
       <div
@@ -193,7 +210,7 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {node.rincianBelanja.map(rb => (
+                {validRincian.map(rb => (
                   <tr key={rb.id} className="group/row hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors bg-white dark:bg-gray-800/30">
                     <td className="px-4 py-4 font-medium text-gray-700 dark:text-gray-300">{rb.kode}</td>
                     <td className="px-4 py-4 text-gray-600 dark:text-gray-400">{rb.uraian}</td>
@@ -221,10 +238,24 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
                     </td>
                   </tr>
                 ))}
-                <tr className="bg-gray-100 dark:bg-gray-800 border-t border-gray-300 dark:border-gray-600">
-                  <td colSpan={3} className="px-4 py-4 font-bold text-gray-800 dark:text-gray-200 text-right">TOTAL BELANJA</td>
-                  <td className="px-4 py-4 font-bold text-blue-600 dark:text-blue-400 text-right">
-                    {formatCurrency(node.rincianBelanja.reduce((sum, item) => sum + (item.total || item.totalAnggaran || 0), 0))}
+                <tr className="bg-gray-50 dark:bg-gray-800 border-t border-gray-300 dark:border-gray-600">
+                  <td colSpan={3} className="px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 text-right">Total Belanja Operasi</td>
+                  <td className="px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 text-right">
+                    {formatCurrency(totalOperasi)}
+                  </td>
+                  <td></td>
+                </tr>
+                <tr className="bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+                  <td colSpan={3} className="px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 text-right">Total Belanja Modal</td>
+                  <td className="px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 text-right">
+                    {formatCurrency(totalModal)}
+                  </td>
+                  <td></td>
+                </tr>
+                <tr className="bg-blue-50 dark:bg-blue-900/20 border-t border-blue-200 dark:border-blue-800/30">
+                  <td colSpan={3} className="px-4 py-4 font-bold text-blue-800 dark:text-white text-right">Total Belanja Daerah</td>
+                  <td className="px-4 py-4 font-bold text-blue-700 dark:text-white text-right">
+                    {formatCurrency(totalDaerah)}
                   </td>
                   <td></td>
                 </tr>
