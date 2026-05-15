@@ -53,14 +53,17 @@ const generateFlatLraData = (dpaTree, txList) => {
   const allRootItems = [];
 
   // Traverse to collect local root nodes from every Sub Kegiatan
-  const walk = (nodes, parentSubKegId = null) => {
+  const walk = (nodes, parentBagian = null, parentSubKeg = null) => {
     for (const n of nodes) {
+      // Keep track of Bagian Name
+      const currentBagian = n.tipe === 'Bagian' ? n.uraian : parentBagian;
+
       if (n.rincianBelanja && Array.isArray(n.rincianBelanja)) {
         // Extract roots LOCALLY within the Sub Kegiatan to maintain absolute ceiling
         const localRoots = n.rincianBelanja.filter(item => isRootNode(item, n.rincianBelanja));
         
         localRoots.forEach(item => {
-          // Attempt to map realisasi from transactions if linked
+          // Map realisasi from transactions if linked
           const realisasiTx = txs
             .filter(t => t.subKegiatanId === n.id || String(t.kode_rekening) === String(item.kode))
             .reduce((s, t) => s + (parseFloat(t.nominal) || 0), 0);
@@ -68,20 +71,21 @@ const generateFlatLraData = (dpaTree, txList) => {
           allRootItems.push({
             ...item,
             id: `${n.id}-${item.kode}-${Math.random()}`, // Unique ID for flat list
+            bagianUraian: currentBagian || 'Bagian Tidak Diketahui',
             subKegiatanUraian: n.uraian,
             anggaran: item.totalAnggaran || 0,
-            realisasi: realisasiTx || item.realisasi || 0 // Use tx if available
+            realisasi: realisasiTx || item.realisasi || 0
           });
         });
       }
-      if (n.children && n.children.length > 0) walk(n.children, n.tipe === 'Kegiatan' ? n.id : parentSubKegId);
+      if (n.children && n.children.length > 0) walk(n.children, currentBagian, n.tipe === 'Kegiatan' ? n.id : parentSubKeg);
     }
   };
   
   walk(tree);
 
-  // Helper Grouping into Categories
-  const createCategory = (id, prefix, uraian) => {
+  // Helper Grouping into Level 2 Categories
+  const getGroup = (prefix, uraian) => {
     const items = allRootItems.filter(item => String(item.kode).startsWith(prefix));
     const anggaran = items.reduce((s, i) => s + i.anggaran, 0);
     const realisasi = items.reduce((s, i) => s + i.realisasi, 0);
@@ -94,7 +98,7 @@ const generateFlatLraData = (dpaTree, txList) => {
     }));
 
     return {
-      id,
+      id: prefix,
       kode: prefix,
       uraian,
       anggaran,
@@ -105,80 +109,103 @@ const generateFlatLraData = (dpaTree, txList) => {
     };
   };
 
-  return [
-    createCategory('cat-1', '5.1.01', 'Belanja Pegawai'),
-    createCategory('cat-2', '5.1.02', 'Belanja Barang dan Jasa'),
-    createCategory('cat-3', '5.1.05', 'Belanja Hibah'),
-    createCategory('cat-4', '5.2.02', 'Belanja Modal Peralatan dan Mesin'),
-  ];
+  const pegawai = getGroup('5.1.01', 'Belanja Pegawai');
+  const barjas = getGroup('5.1.02', 'Belanja Barang dan Jasa');
+  const hibah = getGroup('5.1.05', 'Belanja Hibah');
+  const permes = getGroup('5.2.02', 'Belanja Modal Peralatan dan Mesin');
+
+  // Helper Grouping into Level 1
+  const operasiGroup = {
+     id: '5.1',
+     kode: '5.1',
+     uraian: 'BELANJA OPERASI',
+     anggaran: pegawai.anggaran + barjas.anggaran + hibah.anggaran,
+     realisasi: pegawai.realisasi + barjas.realisasi + hibah.realisasi,
+     sisaAnggaran: (pegawai.sisaAnggaran + barjas.sisaAnggaran + hibah.sisaAnggaran),
+     capaianPersen: (pegawai.anggaran + barjas.anggaran + hibah.anggaran) > 0 ? ((pegawai.realisasi + barjas.realisasi + hibah.realisasi) / (pegawai.anggaran + barjas.anggaran + hibah.anggaran)) * 100 : 0,
+     children: [pegawai, barjas, hibah]
+  };
+
+  const modalGroup = {
+     id: '5.2',
+     kode: '5.2',
+     uraian: 'BELANJA MODAL',
+     anggaran: permes.anggaran,
+     realisasi: permes.realisasi,
+     sisaAnggaran: permes.sisaAnggaran,
+     capaianPersen: permes.capaianPersen,
+     children: [permes]
+  };
+
+  return [operasiGroup, modalGroup];
 };
 
-// ─── Expandable Category Row ──────────────────────────────────────────────────
-const FlatCategoryRow = ({ category, expandedIds, toggleNode, selectedYear }) => {
-  const isExpanded = expandedIds.has(category.id);
-  const hasChildren = category.children.length > 0;
-
+// ─── Level 2 & 3 Rows ────────────────────────────────────────────────────────
+const Level2Row = ({ subCategory, expandedIds, toggleNode }) => {
+  const isExpanded = expandedIds.has(subCategory.id);
+  
   return (
     <>
       <tr 
-        className="bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/80 dark:hover:bg-slate-800 transition-colors border-b border-slate-200 dark:border-slate-700 cursor-pointer"
-        onClick={() => toggleNode(category.id)}
+        className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-800 transition-colors border-b border-slate-200 dark:border-slate-700 cursor-pointer"
+        onClick={() => toggleNode(subCategory.id)}
       >
-        <td className="px-4 py-4 text-sm font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+        <td className="px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap pl-10">
           <div className="flex items-center gap-2">
-            {isExpanded ? <ChevronDown size={16} className="text-blue-500" /> : <ChevronRight size={16} className="text-blue-500" />}
-            {category.kode}
+            {isExpanded ? <ChevronDown size={14} className="text-blue-500" /> : <ChevronRight size={14} className="text-blue-500" />}
+            {subCategory.kode}
           </div>
         </td>
-        <td className="px-4 py-4 text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide">
-          {category.uraian}
-          <span className="ml-2 text-[10px] bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300 py-0.5 px-2 rounded-full font-medium">
-            {category.children.length} Item
+        <td className="px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+          {subCategory.uraian}
+          <span className="ml-2 text-[10px] bg-white dark:bg-slate-900 text-slate-500 py-0.5 px-2 rounded-full border border-slate-300 dark:border-slate-700">
+            {subCategory.children.length} Item
           </span>
         </td>
-        <td className="px-4 py-4 text-right text-sm font-bold text-slate-800 dark:text-slate-200">
-          {formatRupiah(category.anggaran)}
+        <td className="px-4 py-3 text-right text-sm font-semibold text-slate-800 dark:text-slate-200">
+          {formatRupiah(subCategory.anggaran)}
         </td>
-        <td className="px-4 py-4 text-right text-sm font-bold text-blue-700 dark:text-blue-400">
-          {formatRupiah(category.realisasi)}
+        <td className="px-4 py-3 text-right text-sm font-semibold text-blue-600 dark:text-blue-400">
+          {formatRupiah(subCategory.realisasi)}
         </td>
-        <td className="px-4 py-4 whitespace-nowrap">
-          <div className="flex flex-col items-end gap-1.5">
-            <CapaianBadge persen={category.capaianPersen} />
+        <td className="px-4 py-3 whitespace-nowrap">
+          <div className="flex flex-col items-end gap-1">
+            <CapaianBadge persen={subCategory.capaianPersen} />
           </div>
         </td>
       </tr>
 
-      {/* Rincian Items Nested Table */}
-      {isExpanded && hasChildren && (
+      {/* LEVEL 3: RINCIAN ITEMS */}
+      {isExpanded && subCategory.children.length > 0 && (
         <tr>
           <td colSpan="5" className="p-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-            <div className="overflow-x-auto shadow-inner bg-gray-50/50 dark:bg-gray-900/50 p-4">
+            <div className="overflow-x-auto shadow-inner bg-gray-50/50 dark:bg-gray-900/50 p-4 pl-14">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700 text-[10px] uppercase text-gray-400 dark:text-gray-500 tracking-wider">
                     <th className="pb-2 pl-4 w-[180px]">Kode Rekening</th>
-                    <th className="pb-2 pl-2">Uraian Belanja</th>
-                    <th className="pb-2 pr-4 text-right w-[180px]">Anggaran</th>
-                    <th className="pb-2 pr-4 text-right w-[180px]">Realisasi</th>
-                    <th className="pb-2 pr-4 text-right w-[180px]">Sisa</th>
-                    <th className="pb-2 pr-4 text-right w-[100px]">%</th>
+                    <th className="pb-2 pl-2">Uraian Belanja & Asal Bagian</th>
+                    <th className="pb-2 pr-4 text-right w-[160px]">Anggaran</th>
+                    <th className="pb-2 pr-4 text-right w-[160px]">Realisasi</th>
+                    <th className="pb-2 pr-4 text-right w-[160px]">Sisa</th>
+                    <th className="pb-2 pr-4 text-right w-[80px]">%</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {category.children.map(item => (
+                  {subCategory.children.map(item => (
                     <tr key={item.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors">
-                      <td className="py-2 pl-4 text-xs font-mono text-gray-500 dark:text-gray-400">{item.kode}</td>
+                      <td className="py-2 pl-4 text-xs font-mono text-gray-500 dark:text-gray-400 align-top pt-3">{item.kode}</td>
                       <td className="py-2 pl-2 text-xs text-gray-700 dark:text-gray-300 font-medium">
                         {item.uraian}
-                        <div className="text-[10px] text-gray-400 font-normal mt-0.5 line-clamp-1 truncate max-w-sm">
-                          Sub: {item.subKegiatanUraian}
+                        <div className="text-[10px] text-gray-500 dark:text-gray-400 font-normal mt-1 leading-tight flex flex-col gap-0.5">
+                          <span><span className="font-medium text-gray-600 dark:text-gray-300">Bagian:</span> {item.bagianUraian}</span>
+                          <span><span className="font-medium text-gray-600 dark:text-gray-300">Sub Keg:</span> {item.subKegiatanUraian}</span>
                         </div>
                       </td>
-                      <td className="py-2 pr-4 text-xs text-right text-gray-800 dark:text-gray-200">{formatRupiah(item.anggaran)}</td>
-                      <td className="py-2 pr-4 text-xs text-right text-blue-600 dark:text-blue-400 font-medium">{formatRupiah(item.realisasi)}</td>
-                      <td className="py-2 pr-4 text-xs text-right text-red-500 dark:text-red-400">{formatRupiah(item.sisaAnggaran)}</td>
-                      <td className="py-2 pr-4 text-xs text-right">
+                      <td className="py-2 pr-4 text-xs text-right text-gray-800 dark:text-gray-200 align-top pt-3">{formatRupiah(item.anggaran)}</td>
+                      <td className="py-2 pr-4 text-xs text-right text-blue-600 dark:text-blue-400 font-medium align-top pt-3">{formatRupiah(item.realisasi)}</td>
+                      <td className="py-2 pr-4 text-xs text-right text-red-500 dark:text-red-400 align-top pt-3">{formatRupiah(item.sisaAnggaran)}</td>
+                      <td className="py-2 pr-4 text-xs text-right align-top pt-3">
                         <span className="font-bold text-gray-600 dark:text-gray-400">{formatPersen(item.capaianPersen)}</span>
                       </td>
                     </tr>
@@ -193,6 +220,46 @@ const FlatCategoryRow = ({ category, expandedIds, toggleNode, selectedYear }) =>
   );
 };
 
+// ─── Level 1 Row ─────────────────────────────────────────────────────────────
+const Level1Row = ({ category, expandedIds, toggleNode }) => {
+  const isExpanded = expandedIds.has(category.id);
+
+  return (
+    <>
+      <tr 
+        className="bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer border-b border-blue-800"
+        onClick={() => toggleNode(category.id)}
+      >
+        <td className="px-4 py-4 text-sm font-bold whitespace-nowrap">
+          <div className="flex items-center gap-2">
+            {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            {category.kode}
+          </div>
+        </td>
+        <td className="px-4 py-4 text-sm font-bold uppercase tracking-wide">
+          {category.uraian}
+        </td>
+        <td className="px-4 py-4 text-right text-sm font-bold">
+          {formatRupiah(category.anggaran)}
+        </td>
+        <td className="px-4 py-4 text-right text-sm font-bold text-blue-100">
+          {formatRupiah(category.realisasi)}
+        </td>
+        <td className="px-4 py-4 whitespace-nowrap">
+          <div className="flex flex-col items-end gap-1.5">
+             <span className="font-bold bg-white/20 px-2 py-0.5 rounded-md text-xs">{formatPersen(category.capaianPersen)}</span>
+          </div>
+        </td>
+      </tr>
+
+      {/* Render Level 2 Children */}
+      {isExpanded && category.children.map(sub => (
+         <Level2Row key={sub.id} subCategory={sub} expandedIds={expandedIds} toggleNode={toggleNode} />
+      ))}
+    </>
+  );
+};
+
 // ─── Main LraPage ─────────────────────────────────────────────────────────────
 const LraPage = () => {
   const { dpaData: rawDpaData, transactions: rawTransactions } = useContext(DpaContext);
@@ -201,7 +268,7 @@ const LraPage = () => {
   const dpaData = Array.isArray(rawDpaData) ? rawDpaData : [];
   const transactions = Array.isArray(rawTransactions) ? rawTransactions : [];
 
-  // Generate flat grouped data
+  // Generate triple-level grouped data
   const flatCategories = useMemo(() => generateFlatLraData(dpaData, transactions), [dpaData, transactions]);
 
   // Grand totals
@@ -216,8 +283,16 @@ const LraPage = () => {
     };
   }, [flatCategories]);
 
-  // Expand/Collapse state
-  const allIds = useMemo(() => flatCategories.map(c => c.id), [flatCategories]);
+  // Expand/Collapse state (all IDs include Level 1 and Level 2)
+  const allIds = useMemo(() => {
+    let ids = [];
+    flatCategories.forEach(cat => {
+       ids.push(cat.id);
+       cat.children.forEach(sub => ids.push(sub.id));
+    });
+    return ids;
+  }, [flatCategories]);
+
   const [expandedIds, setExpandedIds] = useState(() => new Set());
 
   const toggleNode = useCallback((id) => {
@@ -228,17 +303,30 @@ const LraPage = () => {
     });
   }, []);
 
-  const expandAll = () => setExpandedIds(new Set(allIds));
+  const expandAll = () => {
+    Swal.fire({ title: 'Memproses...', text: 'Membuka seluruh rincian laporan', timer: 500, showConfirmButton: false });
+    setExpandedIds(new Set(allIds));
+  };
+  
   const collapseAll = () => setExpandedIds(new Set());
 
   const exportToExcel = () => {
     Swal.fire({
       icon: 'success',
-      title: 'Fitur Export LRA Flat',
+      title: 'Fitur Export LRA',
       text: 'Fitur export sedang diproses...',
       timer: 1500,
       showConfirmButton: false
     });
+  };
+
+  // Helper untuk sapaan
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 11) return 'Pagi';
+    if (hour < 15) return 'Siang';
+    if (hour < 18) return 'Sore';
+    return 'Malam';
   };
 
   return (
@@ -246,7 +334,7 @@ const LraPage = () => {
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 font-medium print:hidden">
         <span>Dashboard</span><span>/</span><span>Laporan</span><span>/</span>
-        <span className="text-gray-900 dark:text-white">LRA (Flat Summary)</span>
+        <span className="text-gray-900 dark:text-white">LRA (Nested Summary)</span>
       </div>
 
       {/* ── Page Header ──────────────────────────────────────────────── */}
@@ -254,10 +342,10 @@ const LraPage = () => {
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
             <FileBarChart2 size={24} className="text-blue-600 dark:text-blue-400" />
-            Laporan Realisasi Anggaran (Flat Summary)
+            Laporan Realisasi Anggaran (LRA)
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Konsolidasi Keseluruhan Bagian · Tahun Anggaran <span className="font-bold text-blue-600 dark:text-blue-400">{selectedYear}</span>
+            Selamat {getGreeting()}! Laporan LRA Konsolidasi Tahun Anggaran <span className="font-bold text-blue-600 dark:text-blue-400">{selectedYear}</span>
           </p>
         </div>
 
@@ -300,12 +388,12 @@ const LraPage = () => {
         ))}
       </div>
 
-      {/* ── Flat Table ─────────────────────────────────────────────────── */}
+      {/* ── Triple-Level Nested Table ───────────────────────────────────── */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-between">
           <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2 text-sm">
             <FileBarChart2 size={16} className="text-blue-500" />
-            Rekapitulasi Global Belanja LRA
+            Rekapitulasi Global Belanja LRA (Triple-Level)
           </h3>
         </div>
 
@@ -322,12 +410,11 @@ const LraPage = () => {
             </thead>
             <tbody>
               {flatCategories.map(cat => (
-                <FlatCategoryRow
+                <Level1Row
                   key={cat.id}
                   category={cat}
                   expandedIds={expandedIds}
                   toggleNode={toggleNode}
-                  selectedYear={selectedYear}
                 />
               ))}
             </tbody>
@@ -343,9 +430,7 @@ const LraPage = () => {
                   {formatRupiah(grandTotal.realisasi)}
                 </td>
                 <td className="px-4 py-4 text-right whitespace-nowrap">
-                  <div className="flex flex-col items-end gap-1.5">
-                    <CapaianBadge persen={grandTotal.persen} />
-                  </div>
+                  <CapaianBadge persen={grandTotal.persen} />
                 </td>
               </tr>
             </tfoot>
