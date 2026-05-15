@@ -39,15 +39,34 @@ const extractArray = (responseData) => {
   return [];
 };
 
+// ─── Helper: Deteksi Leaf Node pada array rincianBelanja ─────────────────────
+/**
+ * Sebuah item dianggap leaf jika tidak ada item lain di array yang sama
+ * yang kodenya dimulai dengan kode item tersebut (artinya tidak punya anak).
+ *
+ * Contoh:
+ *   '5.1.02'              → PARENT (ada '5.1.02.01' di array)
+ *   '5.1.02.01'           → PARENT (ada '5.1.02.01.001' di array)
+ *   '5.1.02.01.001.00024' → LEAF   (tidak ada yang lebih panjang)
+ */
+const isLeafNode = (item, allItems) =>
+  !allItems.some(
+    (other) => other.kode !== item.kode && String(other.kode).startsWith(String(item.kode))
+  );
+
 // ─── Helper: Transform hierarchy API → format yang dipakai Front-End ──────────
 /**
  * API /dpa/hierarchy mengembalikan format:
- *   [{ kode_program, kegiatans: [{ sub_kegiatans: [{ uraians: [...] }] }] }]
+ *   [{ kode_bagian, programs: [{ kegiatans: [{ sub_kegiatans: [{ uraians: [...] }] }] }] }]
  *
- * Komponen React (BelanjaPage, LraPage, dll.) mengharapkan format lama:
+ * Fungsi ini melakukan mapping ke format tree Front-End:
  *   [{ id, tipe, uraian, totalAnggaran, children:[Program→Kegiatan→SubKegiatan] }]
  *
- * Fungsi ini melakukan mapping agar seluruh komponen tidak perlu diubah.
+ * JAMINAN AKURASI (Global Data Bubbling):
+ *   1. totalSubKeg = SUM(leaf rincianBelanja)     → tidak double-count parent node
+ *   2. totalKeg    = SUM(totalSubKeg)             → bubble up akurat
+ *   3. totalProg   = SUM(totalKeg)                → bubble up akurat
+ *   4. totalBagian = SUM(totalProg)               → bubble up akurat
  */
 const transformHierarchyToTree = (rawData) => {
   const hierarchy = extractArray(rawData);
@@ -57,38 +76,40 @@ const transformHierarchyToTree = (rawData) => {
     const programs = (bagian.programs || []).map((program) => {
       const kegiatans = (program.kegiatans || []).map((kegiatan) => {
         const subKegiatans = (kegiatan.sub_kegiatans || []).map((subKeg) => {
-          // ── Simpan SEMUA baris rincian (induk + leaf) untuk tampilan hirarki penuh ──
+
+          // STEP 1: Petakan semua baris uraian → rincianBelanja UTUH (induk + leaf)
+          // Gunakan field tunggal `totalAnggaran` (tidak ada duplikat `total`)
           const rincianBelanja = (subKeg.uraians || []).map((u) => ({
             id:            u.id,
             kode:          u.kode_rekening || String(u.uraian || '').substring(0, 20),
             uraian:        u.uraian,
             sumberDana:    u.sumber_dana,
             totalAnggaran: parseFloat(u.pagu_anggaran) || 0,
-            total:         parseFloat(u.pagu_anggaran) || 0,
           }));
 
-          // ── Total SubKegiatan: HANYA dari leaf node (tidak punya sub-kode di bawahnya) ──
-          // Ini mencegah double-counting antara baris induk dan baris anak.
-          const isLeaf = (item) =>
-            !rincianBelanja.some(
-              (other) => other.kode !== item.kode && String(other.kode).startsWith(String(item.kode))
-            );
+          // STEP 2: Hitung total Sub Kegiatan HANYA dari leaf node
+          // → Mencegah double-counting: baris induk (5.1.02) tidak dijumlahkan
+          //   jika baris anak (5.1.02.01.001.00024) sudah mewakili nilainya.
+          const totalSubKeg = rincianBelanja.reduce((sum, item) => {
+            if (isLeafNode(item, rincianBelanja)) {
+              return sum + (parseFloat(item.totalAnggaran) || 0);
+            }
+            return sum;
+          }, 0);
 
-          const totalSubKeg = rincianBelanja
-            .filter(isLeaf)
-            .reduce((s, r) => s + r.totalAnggaran, 0);
-
+          // STEP 3: Return SubKegiatan dengan rincianBelanja UTUH tapi totalAnggaran AKURAT
           return {
             id:            subKeg.kode_sub_kegiatan,
             kode:          subKeg.kode_sub_kegiatan,
             uraian:        subKeg.nama_sub_kegiatan,
             tipe:          'Sub Kegiatan',
-            totalAnggaran: totalSubKeg,
+            totalAnggaran: totalSubKeg,  // ← angka murni, bebas double-count
             rencanaKas:    totalSubKeg,
-            rincianBelanja, // memuat seluruh level kode rekening
+            rincianBelanja,              // ← utuh untuk render hierarki di DpaPage
           };
         });
 
+        // Bubble up: totalKeg = SUM(totalSubKeg) — sudah akurat secara otomatis
         const totalKeg = subKegiatans.reduce((s, sk) => s + sk.totalAnggaran, 0);
 
         return {
@@ -102,6 +123,7 @@ const transformHierarchyToTree = (rawData) => {
         };
       });
 
+      // Bubble up: totalProg = SUM(totalKeg)
       const totalProg = kegiatans.reduce((s, k) => s + k.totalAnggaran, 0);
 
       return {
@@ -115,6 +137,7 @@ const transformHierarchyToTree = (rawData) => {
       };
     });
 
+    // Bubble up: totalBagian = SUM(totalProg)
     const totalBagian = programs.reduce((s, p) => s + p.totalAnggaran, 0);
 
     return {

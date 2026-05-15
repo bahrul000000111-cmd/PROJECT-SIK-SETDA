@@ -84,38 +84,40 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
   const styles = getTypeStyles(node.tipe);
   const IconType = styles.icon;
 
-  // ── Smart Summing: Total hanya dihitung dari leaf node (mencegah double-counting) ──
+  // ── isLeafNode: sinkron 100% dengan logika di DpaContext.jsx ──
+  // Sebuah item adalah leaf jika tidak ada item lain yang kodenya
+  // merupakan turunan (prefix) dari kode item tersebut.
   const allRincian = node.rincianBelanja || [];
-  const isLeafRincian = (item) =>
-    !allRincian.some(
+  const isLeafNode = (item, allItems) =>
+    !allItems.some(
       (other) => other.kode !== item.kode && String(other.kode).startsWith(String(item.kode))
     );
-  const leafRincian = allRincian.filter(isLeafRincian);
 
-  const totalOperasi = leafRincian
+  // ── Smart Summing Footer: hanya dari leaf node, sumber: totalAnggaran (bukan total) ──
+  const leafNodes = allRincian.filter((item) => isLeafNode(item, allRincian));
+
+  const totalOperasi = leafNodes
     .filter(item => item.kode && String(item.kode).startsWith('5.1'))
-    .reduce((sum, item) => sum + (item.total || item.totalAnggaran || 0), 0);
+    .reduce((sum, item) => sum + (item.totalAnggaran || 0), 0);
 
-  const totalModal = leafRincian
+  const totalModal = leafNodes
     .filter(item => item.kode && String(item.kode).startsWith('5.2'))
-    .reduce((sum, item) => sum + (item.total || item.totalAnggaran || 0), 0);
+    .reduce((sum, item) => sum + (item.totalAnggaran || 0), 0);
 
   const totalDaerah = totalOperasi + totalModal;
 
-  // ── Helper: tentukan styling hierarki berdasarkan kedalaman kode rekening ──
+  // ── Helper styling: indent & bold berdasarkan apakah node adalah parent ──
   const getRincianStyle = (kode) => {
     const k = String(kode || '');
     const dots = (k.match(/\./g) || []).length;
-    const isParent = allRincian.some(
-      (other) => other.kode !== k && String(other.kode).startsWith(k)
-    );
+    const isParent = !isLeafNode({ kode: k }, allRincian);
     return {
-      indent:     Math.max(0, (dots - 1) * 16),
-      isBold:     isParent,
-      textClass:  isParent
+      indent:    Math.max(0, (dots - 1) * 16),
+      isBold:    isParent,
+      textClass: isParent
         ? 'font-semibold text-gray-800 dark:text-gray-200'
         : 'font-normal text-gray-600 dark:text-gray-400',
-      rowClass:   isParent
+      rowClass:  isParent
         ? 'bg-gray-50/80 dark:bg-gray-800/60'
         : 'bg-white dark:bg-gray-800/30',
     };
@@ -155,7 +157,7 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
         <div className="flex flex-col items-end shrink-0 gap-3 mt-1">
           <div className="flex flex-col items-end min-w-[150px]">
             <span className="text-sm font-bold text-gray-900 dark:text-white">
-              {formatCurrency(node.totalAnggaran || node.total || 0)}
+              {formatCurrency(node.totalAnggaran || 0)}
             </span>
             <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-right">
               {getKeteranganBelanja(node)}
@@ -275,7 +277,7 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
                           ? 'font-semibold text-gray-700 dark:text-gray-300'
                           : 'font-bold text-gray-900 dark:text-white'
                       }`}>
-                        {formatCurrency(rb.total || rb.totalAnggaran || 0)}
+                        {formatCurrency(rb.totalAnggaran || 0)}
                       </td>
                       {/* Aksi: hanya muncul saat hover */}
                       <td className="px-4 py-3">
@@ -476,7 +478,7 @@ const DpaPage = () => {
     setEditFormData({
       kode: node.kode || '',
       uraian: node.uraian || '',
-      totalAnggaran: formatInputCurrency((node.totalAnggaran || node.total || 0).toString()),
+      totalAnggaran: formatInputCurrency((node.totalAnggaran || 0).toString()),
       sumberDana: node.sumberDana || ''
     });
     setIsModalOpen(true);
@@ -833,7 +835,7 @@ const DpaPage = () => {
                       {item.uraian}
                     </td>
                     <td className="px-4 py-4 text-right font-bold text-gray-900 dark:text-white">
-                      {formatCurrency(item.totalAnggaran || item.total || 0)}
+                      {formatCurrency(item.totalAnggaran || 0)}
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center justify-center gap-2">
