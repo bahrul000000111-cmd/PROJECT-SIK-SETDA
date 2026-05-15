@@ -57,7 +57,8 @@ const transformHierarchyToTree = (rawData) => {
     const programs = (bagian.programs || []).map((program) => {
       const kegiatans = (program.kegiatans || []).map((kegiatan) => {
         const subKegiatans = (kegiatan.sub_kegiatans || []).map((subKeg) => {
-          const rincianBelanjaRaw = (subKeg.uraians || []).map((u) => ({
+          // ── Simpan SEMUA baris rincian (induk + leaf) untuk tampilan hirarki penuh ──
+          const rincianBelanja = (subKeg.uraians || []).map((u) => ({
             id:            u.id,
             kode:          u.kode_rekening || String(u.uraian || '').substring(0, 20),
             uraian:        u.uraian,
@@ -66,14 +67,16 @@ const transformHierarchyToTree = (rawData) => {
             total:         parseFloat(u.pagu_anggaran) || 0,
           }));
 
-          const rincianBelanja = rincianBelanjaRaw.filter((item, index, self) => {
-              const hasChildren = self.some(other => 
-                  other.kode !== item.kode && String(other.kode).startsWith(String(item.kode))
-              );
-              return !hasChildren;
-          });
+          // ── Total SubKegiatan: HANYA dari leaf node (tidak punya sub-kode di bawahnya) ──
+          // Ini mencegah double-counting antara baris induk dan baris anak.
+          const isLeaf = (item) =>
+            !rincianBelanja.some(
+              (other) => other.kode !== item.kode && String(other.kode).startsWith(String(item.kode))
+            );
 
-          const totalSubKeg = rincianBelanja.reduce((s, r) => s + r.totalAnggaran, 0);
+          const totalSubKeg = rincianBelanja
+            .filter(isLeaf)
+            .reduce((s, r) => s + r.totalAnggaran, 0);
 
           return {
             id:            subKeg.kode_sub_kegiatan,
@@ -82,7 +85,7 @@ const transformHierarchyToTree = (rawData) => {
             tipe:          'Sub Kegiatan',
             totalAnggaran: totalSubKeg,
             rencanaKas:    totalSubKeg,
-            rincianBelanja,
+            rincianBelanja, // memuat seluruh level kode rekening
           };
         });
 

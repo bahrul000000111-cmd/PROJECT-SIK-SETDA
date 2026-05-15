@@ -84,15 +84,42 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
   const styles = getTypeStyles(node.tipe);
   const IconType = styles.icon;
 
-  const totalOperasi = (node.rincianBelanja || [])
-      .filter(item => item.kode && String(item.kode).startsWith('5.1'))
-      .reduce((sum, item) => sum + (item.total || item.totalAnggaran || 0), 0);
+  // ── Smart Summing: Total hanya dihitung dari leaf node (mencegah double-counting) ──
+  const allRincian = node.rincianBelanja || [];
+  const isLeafRincian = (item) =>
+    !allRincian.some(
+      (other) => other.kode !== item.kode && String(other.kode).startsWith(String(item.kode))
+    );
+  const leafRincian = allRincian.filter(isLeafRincian);
 
-  const totalModal = (node.rincianBelanja || [])
-      .filter(item => item.kode && String(item.kode).startsWith('5.2'))
-      .reduce((sum, item) => sum + (item.total || item.totalAnggaran || 0), 0);
+  const totalOperasi = leafRincian
+    .filter(item => item.kode && String(item.kode).startsWith('5.1'))
+    .reduce((sum, item) => sum + (item.total || item.totalAnggaran || 0), 0);
+
+  const totalModal = leafRincian
+    .filter(item => item.kode && String(item.kode).startsWith('5.2'))
+    .reduce((sum, item) => sum + (item.total || item.totalAnggaran || 0), 0);
 
   const totalDaerah = totalOperasi + totalModal;
+
+  // ── Helper: tentukan styling hierarki berdasarkan kedalaman kode rekening ──
+  const getRincianStyle = (kode) => {
+    const k = String(kode || '');
+    const dots = (k.match(/\./g) || []).length;
+    const isParent = allRincian.some(
+      (other) => other.kode !== k && String(other.kode).startsWith(k)
+    );
+    return {
+      indent:     Math.max(0, (dots - 1) * 16),
+      isBold:     isParent,
+      textClass:  isParent
+        ? 'font-semibold text-gray-800 dark:text-gray-200'
+        : 'font-normal text-gray-600 dark:text-gray-400',
+      rowClass:   isParent
+        ? 'bg-gray-50/80 dark:bg-gray-800/60'
+        : 'bg-white dark:bg-gray-800/30',
+    };
+  };
 
   return (
     <React.Fragment>
@@ -194,65 +221,115 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-sm">
               <thead>
-                <tr className="bg-gray-50 dark:bg-gray-800/30 text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
-                  <th className="px-4 py-3 font-medium w-48">Kode Rekening</th>
-                  <th className="px-4 py-3 font-medium">Uraian Belanja</th>
-                  <th className="px-4 py-3 font-medium w-40">Sumber Dana</th>
-                  <th className="px-4 py-3 font-medium text-right w-48">Alokasi Anggaran</th>
-                  <th className="px-4 py-3 font-medium text-center w-16">Aksi</th>
+                <tr className="bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-b-2 border-gray-200 dark:border-gray-700">
+                  <th className="px-4 py-3 font-bold text-[11px] uppercase tracking-wider w-52">Kode Rekening</th>
+                  <th className="px-4 py-3 font-bold text-[11px] uppercase tracking-wider">Uraian Belanja</th>
+                  <th className="px-4 py-3 font-bold text-[11px] uppercase tracking-wider w-44">Sumber Dana</th>
+                  <th className="px-4 py-3 font-bold text-[11px] uppercase tracking-wider text-right w-48">Alokasi Anggaran</th>
+                  <th className="px-4 py-3 font-bold text-[11px] uppercase tracking-wider text-center w-20">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {(node.rincianBelanja || []).map(rb => (
-                  <tr key={rb.id} className="group/row hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors bg-white dark:bg-gray-800/30">
-                    <td className="px-4 py-4 font-medium text-gray-700 dark:text-gray-300">{rb.kode}</td>
-                    <td className="px-4 py-4 text-gray-600 dark:text-gray-400">{rb.uraian}</td>
-                    <td className="px-4 py-4 text-gray-500 dark:text-gray-400">
-                      <span className="px-2.5 py-1 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded text-xs font-medium">{rb.sumberDana}</span>
-                    </td>
-                    <td className="px-4 py-4 text-right font-bold text-gray-900 dark:text-white">{formatCurrency(rb.total || rb.totalAnggaran || 0)}</td>
-                    <td className="px-4 py-4">
-                      <div className="flex justify-center items-center gap-2">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onEdit({ ...rb, tipe: 'Rincian Belanja' }); }}
-                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors cursor-pointer opacity-0 group-hover/row:opacity-100"
-                          title="Edit Rincian"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onDelete(rb.id, 'Rincian Belanja'); }}
-                          className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-800 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 rounded-md transition-colors cursor-pointer opacity-0 group-hover/row:opacity-100"
-                          title="Hapus Rincian"
-                        >
-                          <Trash size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                <tr className="bg-gray-50 dark:bg-gray-800 border-t border-gray-300 dark:border-gray-600">
-                  <td colSpan={3} className="px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 text-right">Total Belanja Operasi</td>
-                  <td className="px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 text-right">
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
+                {(allRincian).map(rb => {
+                  const st = getRincianStyle(rb.kode);
+                  return (
+                    <tr
+                      key={rb.id}
+                      className={`group/row hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors ${st.rowClass}`}
+                    >
+                      {/* Kode Rekening dengan indent & badge styling */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div style={{ paddingLeft: `${st.indent}px` }}>
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded text-xs font-mono ${
+                              st.isBold
+                                ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 font-semibold'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                            }`}
+                          >
+                            {rb.kode}
+                          </span>
+                        </div>
+                      </td>
+                      {/* Uraian dengan indent sesuai kedalaman */}
+                      <td className="px-4 py-3">
+                        <div style={{ paddingLeft: `${st.indent}px` }}>
+                          <span className={`text-sm leading-snug ${st.textClass}`}>
+                            {rb.uraian}
+                          </span>
+                        </div>
+                      </td>
+                      {/* Sumber Dana: hanya tampil di leaf node */}
+                      <td className="px-4 py-3">
+                        {!st.isBold && rb.sumberDana ? (
+                          <span className="px-2 py-0.5 bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-700 text-teal-700 dark:text-teal-400 rounded text-xs font-medium">
+                            {rb.sumberDana}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
+                        )}
+                      </td>
+                      {/* Nilai Anggaran */}
+                      <td className={`px-4 py-3 text-right whitespace-nowrap ${
+                        st.isBold
+                          ? 'font-semibold text-gray-700 dark:text-gray-300'
+                          : 'font-bold text-gray-900 dark:text-white'
+                      }`}>
+                        {formatCurrency(rb.total || rb.totalAnggaran || 0)}
+                      </td>
+                      {/* Aksi: hanya muncul saat hover */}
+                      <td className="px-4 py-3">
+                        <div className="flex justify-center items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onEdit({ ...rb, tipe: 'Rincian Belanja' }); }}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors cursor-pointer"
+                            title="Edit Rincian"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onDelete(rb.id, 'Rincian Belanja'); }}
+                            className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-800 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 rounded-md transition-colors cursor-pointer"
+                            title="Hapus Rincian"
+                          >
+                            <Trash size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              {/* ── FOOTER: Smart Summing ── */}
+              <tfoot>
+                <tr className="border-t-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800">
+                  <td colSpan={3} className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                    Belanja Operasi (5.1)
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold text-gray-800 dark:text-gray-200">
                     {formatCurrency(totalOperasi)}
                   </td>
                   <td></td>
                 </tr>
-                <tr className="bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-                  <td colSpan={3} className="px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 text-right">Total Belanja Modal</td>
-                  <td className="px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 text-right">
+                <tr className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                  <td colSpan={3} className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                    Belanja Modal (5.2)
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold text-gray-800 dark:text-gray-200">
                     {formatCurrency(totalModal)}
                   </td>
                   <td></td>
                 </tr>
-                <tr className="bg-blue-50 dark:bg-blue-900/20 border-t border-blue-200 dark:border-blue-800/30">
-                  <td colSpan={3} className="px-4 py-4 font-bold text-blue-800 dark:text-white text-right">Total Belanja Daerah</td>
-                  <td className="px-4 py-4 font-bold text-blue-700 dark:text-white text-right">
+                <tr className="border-t-2 border-blue-300 dark:border-blue-700 bg-blue-600 dark:bg-blue-800">
+                  <td colSpan={3} className="px-4 py-4 text-right font-black text-white uppercase tracking-wider text-xs">
+                    Total Belanja Daerah
+                  </td>
+                  <td className="px-4 py-4 text-right font-black text-white text-sm">
                     {formatCurrency(totalDaerah)}
                   </td>
                   <td></td>
                 </tr>
-              </tbody>
+              </tfoot>
             </table>
           </div>
         </div>
