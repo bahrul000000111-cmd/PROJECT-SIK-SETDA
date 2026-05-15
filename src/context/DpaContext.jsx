@@ -87,11 +87,18 @@ const transformHierarchyToTree = (rawData) => {
             totalAnggaran: parseFloat(u.pagu_anggaran) || 0,
           }));
 
-          // STEP 2: Hitung total Sub Kegiatan HANYA dari leaf node
-          // → Mencegah double-counting: baris induk (5.1.02) tidak dijumlahkan
-          //   jika baris anak (5.1.02.01.001.00024) sudah mewakili nilainya.
+          // ── Smart Summing: Hitung total Sub Kegiatan HANYA dari ROOT node ──
+          // Dalam struktur pemerintah, node induk (parent) menyimpan pagu total.
+          // Terkadang nilai parent > jumlah anak (karena ada dana belum teralokasi).
+          // Jika kita menjumlahkan 'Root' (node teratas yang tidak punya parent),
+          // kita mendapatkan nilai pagu absolut tanpa double-counting.
+          const isRootNode = (item, allItems) =>
+            !allItems.some(
+              (other) => other.kode !== item.kode && String(item.kode).startsWith(String(other.kode))
+            );
+
           const totalSubKeg = rincianBelanja.reduce((sum, item) => {
-            if (isLeafNode(item, rincianBelanja)) {
+            if (isRootNode(item, rincianBelanja)) {
               return sum + (parseFloat(item.totalAnggaran) || 0);
             }
             return sum;

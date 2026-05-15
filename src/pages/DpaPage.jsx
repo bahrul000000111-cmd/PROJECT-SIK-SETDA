@@ -84,29 +84,34 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
   const styles = getTypeStyles(node.tipe);
   const IconType = styles.icon;
 
-  // ── isLeafNode: sinkron 100% dengan logika di DpaContext.jsx ──
-  // Sebuah item adalah leaf jika tidak ada item lain yang kodenya
-  // merupakan turunan (prefix) dari kode item tersebut.
+  // ── isRootNode: sinkron 100% dengan logika di DpaContext.jsx ──
+  // Sebuah item adalah root jika tidak ada item lain yang kodenya
+  // merupakan prefix dari kode item tersebut.
   const allRincian = node.rincianBelanja || [];
-  const isLeafNode = (item, allItems) =>
+  const isRootNode = (item, allItems) =>
     !allItems.some(
-      (other) => other.kode !== item.kode && String(other.kode).startsWith(String(item.kode))
+      (other) => other.kode !== item.kode && String(item.kode).startsWith(String(other.kode))
     );
 
-  // ── Smart Summing Footer: hanya dari leaf node, sumber: totalAnggaran (bukan total) ──
-  const leafNodes = allRincian.filter((item) => isLeafNode(item, allRincian));
+  // ── Smart Summing Footer: hanya dari root node (ceiling anggaran) ──
+  const rootNodes = allRincian.filter((item) => isRootNode(item, allRincian));
 
-  const totalOperasi = leafNodes
+  const totalOperasi = rootNodes
     .filter(item => item.kode && String(item.kode).startsWith('5.1'))
     .reduce((sum, item) => sum + (item.totalAnggaran || 0), 0);
 
-  const totalModal = leafNodes
+  const totalModal = rootNodes
     .filter(item => item.kode && String(item.kode).startsWith('5.2'))
     .reduce((sum, item) => sum + (item.totalAnggaran || 0), 0);
 
   const totalDaerah = totalOperasi + totalModal;
 
   // ── Helper styling: indent & bold berdasarkan apakah node adalah parent ──
+  const isLeafNode = (item, allItems) =>
+    !allItems.some(
+      (other) => other.kode !== item.kode && String(other.kode).startsWith(String(item.kode))
+    );
+
   const getRincianStyle = (kode) => {
     const k = String(kode || '');
     const dots = (k.match(/\./g) || []).length;
