@@ -84,11 +84,67 @@ const DEPTH_STYLES = {
   'Sub Kegiatan': { indent: 60, rowCls: 'hover:bg-gray-50/50 dark:hover:bg-gray-800/20', textCls: 'text-gray-600 dark:text-gray-400 text-xs' },
 };
 
+// ─── isRootNode Helper (untuk agregasi Rekap LRA) ─────────────────────────
+const isRootNode = (item, allItems) =>
+  !allItems.some(
+    (other) => other.kode !== item.kode && String(item.kode).startsWith(String(other.kode))
+  );
+
 // ─── Tree Row ─────────────────────────────────────────────────────────────────
 const LraRow = ({ node, expandedIds, toggleNode, depth = 0, selectedYear }) => {
   const isExpanded = expandedIds.has(node.id);
-  const hasChildren = node.children && node.children.length > 0;
+  const isSubKegiatan = node.tipe === 'Sub Kegiatan';
+  
+  // Sebuah node bisa di-expand jika punya children (untuk Bagian/Program/Keg) 
+  // ATAU jika ia adalah Sub Kegiatan yang punya rincianBelanja
+  const hasChildren = (node.children && node.children.length > 0) || 
+                      (isSubKegiatan && node.rincianBelanja && node.rincianBelanja.length > 0);
+                      
   const style = DEPTH_STYLES[node.tipe] || DEPTH_STYLES['Sub Kegiatan'];
+
+  // ─── Engine Rekapitulasi (Virtual Nodes) untuk Sub Kegiatan ─────────────────
+  let rekapNodes = [];
+  if (isExpanded && isSubKegiatan && node.rincianBelanja) {
+    // 1. Ambil HANYA root nodes dari rincian (mencegah double count)
+    const roots = node.rincianBelanja.filter(item => isRootNode(item, node.rincianBelanja));
+
+    // Helper rekap
+    const getRekap = (prefix) => {
+      const items = roots.filter(item => String(item.kode).startsWith(prefix));
+      const anggaran = items.reduce((sum, item) => sum + (item.totalAnggaran || 0), 0);
+      // Di LRA, realisasi transaksi level rincian tidak dicatat per rincian 
+      // dalam tree enrichNode, jadi kita gunakan prop realisasi jika ada, atau 0 
+      // (Untuk kesederhanaan, jika aplikasi butuh detil, kita bisa parsing dari transactions, 
+      // namun dari instruksi user asumsikan prop realisasi ada atau hitung dari item)
+      const realisasi = items.reduce((sum, item) => sum + (item.realisasi || 0), 0);
+      return { anggaran, realisasi };
+    };
+
+    // --- BELANJA OPERASI (5.1) ---
+    const pegawai = getRekap('5.1.01');
+    const barjas = getRekap('5.1.02');
+    const hibah = getRekap('5.1.05');
+    const totalOperasi = {
+      anggaran: pegawai.anggaran + barjas.anggaran + hibah.anggaran,
+      realisasi: pegawai.realisasi + barjas.realisasi + hibah.realisasi
+    };
+
+    // --- BELANJA MODAL (5.2) ---
+    const permes = getRekap('5.2.02');
+    const totalModal = {
+      anggaran: permes.anggaran,
+      realisasi: permes.realisasi
+    };
+
+    rekapNodes = [
+      { kode: '5.1', uraian: 'BELANJA OPERASI', isHeader: true, ...totalOperasi },
+      { kode: '5.1.01', uraian: 'Belanja Pegawai', isSub: true, ...pegawai },
+      { kode: '5.1.02', uraian: 'Belanja Barang dan Jasa', isSub: true, ...barjas },
+      { kode: '5.1.05', uraian: 'Belanja Hibah', isSub: true, ...hibah },
+      { kode: '5.2', uraian: 'BELANJA MODAL', isHeader: true, ...totalModal },
+      { kode: '5.2.02', uraian: 'Belanja Modal Peralatan dan Mesin', isSub: true, ...permes }
+    ];
+  }
 
   return (
     <>
@@ -122,12 +178,12 @@ const LraRow = ({ node, expandedIds, toggleNode, depth = 0, selectedYear }) => {
           {formatRupiah(node.totalAnggaran)}
         </td>
 
-        {/* REALISASI {selectedYear} */}
+        {/* REALISASI */}
         <td className="px-4 py-3 text-right text-xs font-semibold text-blue-700 dark:text-blue-400 whitespace-nowrap">
           {formatRupiah(node.realisasi)}
         </td>
 
-        {/* % {selectedYear} */}
+        {/* % */}
         <td className="px-4 py-3 whitespace-nowrap">
           <div className="flex flex-col items-end gap-1.5">
             <CapaianBadge persen={node.capaianPersen} />
@@ -136,8 +192,8 @@ const LraRow = ({ node, expandedIds, toggleNode, depth = 0, selectedYear }) => {
         </td>
       </tr>
 
-      {/* Render children jika expanded */}
-      {isExpanded && hasChildren && node.children.map(child => (
+      {/* Render children hierarki normal (Program/Kegiatan/SubKegiatan) */}
+      {isExpanded && !isSubKegiatan && node.children && node.children.map(child => (
         <LraRow
           key={child.id}
           node={child}
@@ -147,6 +203,35 @@ const LraRow = ({ node, expandedIds, toggleNode, depth = 0, selectedYear }) => {
           selectedYear={selectedYear}
         />
       ))}
+
+      {/* Render Virtual Nodes (UI Rekapitulasi) untuk Sub Kegiatan */}
+      {isExpanded && isSubKegiatan && rekapNodes.filter(rn => rn.anggaran > 0 || rn.realisasi > 0).map((rn, idx) => {
+        const persenRekap = rn.anggaran > 0 ? (rn.realisasi / rn.anggaran) * 100 : 0;
+        return (
+          <tr key={`rekap-${node.id}-${idx}`} className={rn.isHeader ? 'bg-slate-100/80 dark:bg-slate-800/80' : 'bg-white/50 dark:bg-slate-900/50'}>
+            <td className={`px-4 py-2 text-xs font-mono text-gray-500 dark:text-gray-400 whitespace-nowrap ${rn.isSub ? 'pl-10' : 'pl-6'}`}>
+              {rn.kode}
+            </td>
+            <td className="px-4 py-2 min-w-[280px] max-w-[400px]">
+              <div className={`flex items-start gap-2 ${rn.isHeader ? 'font-bold text-gray-800 dark:text-gray-200' : 'font-medium text-gray-600 dark:text-gray-400'}`} style={{ paddingLeft: `${style.indent + (rn.isSub ? 20 : 0)}px` }}>
+                <span className="w-5 shrink-0" />
+                <span className="leading-snug text-xs">{rn.uraian}</span>
+              </div>
+            </td>
+            <td className="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+              {formatRupiah(rn.anggaran)}
+            </td>
+            <td className="px-4 py-2 text-right text-xs font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+              {formatRupiah(rn.realisasi)}
+            </td>
+            <td className="px-4 py-2 whitespace-nowrap">
+              <div className="flex flex-col items-end gap-1">
+                <CapaianBadge persen={persenRekap} />
+              </div>
+            </td>
+          </tr>
+        );
+      })}
     </>
   );
 };
