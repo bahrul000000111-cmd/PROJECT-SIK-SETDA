@@ -6,6 +6,7 @@ import {
   Printer, ChevronDown, ChevronRight, ChevronsDownUp,
   ChevronsUpDown, FileBarChart2, TrendingUp, TrendingDown, Minus, FileSpreadsheet
 } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 // ─── Format Helpers ───────────────────────────────────────────────────────────
 const formatRupiah = (v) =>
@@ -16,36 +17,9 @@ const formatRupiah = (v) =>
 const formatPersen = (v) =>
   isNaN(v) || !isFinite(v) ? '0.00%' : `${v.toFixed(2)}%`;
 
-// ─── LRA Brain: Recursive Enrichment ─────────────────────────────────────────
-const enrichNode = (node, txList) => {
-  const transactions = Array.isArray(txList) ? txList : [];
-  const enriched = { ...node };
-
-  if (node.children && node.children.length > 0) {
-    enriched.children = node.children.map(child => enrichNode(child, transactions));
-    enriched.realisasi = enriched.children.reduce((s, c) => s + (c.realisasi || 0), 0);
-  } else {
-    // Leaf node (Sub Kegiatan) — sum from transactions
-    enriched.realisasi = transactions
-      .filter(t => t.subKegiatanId === node.id)
-      .reduce((s, t) => s + (t.nominal || 0), 0);
-  }
-
-  const anggaran = enriched.totalAnggaran || 0;
-  enriched.sisaAnggaran  = anggaran - enriched.realisasi;
-  enriched.capaianPersen = anggaran > 0 ? (enriched.realisasi / anggaran) * 100 : 0;
-
-  return enriched;
-};
-
-const generateLraData = (dpaTree, txList) => {
-  const tree = Array.isArray(dpaTree) ? dpaTree : [];
-  const txs  = Array.isArray(txList)  ? txList  : [];
-  return tree.map(node => enrichNode(node, txs));
-};
-
-// ─── Capaian Badge ────────────────────────────────────────────────────────────
+// ─── Component Helpers ────────────────────────────────────────────────────────
 const CapaianBadge = ({ persen }) => {
+  if (persen === undefined || persen === null) return null;
   let cls, Icon;
   if (persen >= 80) {
     cls = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800';
@@ -65,190 +39,158 @@ const CapaianBadge = ({ persen }) => {
   );
 };
 
-// ─── Progress Bar ─────────────────────────────────────────────────────────────
-const ProgressBar = ({ persen }) => {
-  const capped = Math.min(persen, 100);
-  const color = persen >= 80 ? 'bg-emerald-500' : persen >= 40 ? 'bg-amber-400' : 'bg-red-500';
-  return (
-    <div className="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
-      <div className={`${color} h-1.5 rounded-full transition-all duration-500`} style={{ width: `${capped}%` }} />
-    </div>
-  );
-};
-
-// ─── Row Depth Styling ────────────────────────────────────────────────────────
-const DEPTH_STYLES = {
-  Bagian:       { indent: 0,  rowCls: 'bg-slate-50 dark:bg-slate-800/60 font-bold',    textCls: 'text-slate-800 dark:text-slate-100 uppercase tracking-wide text-xs' },
-  Program:      { indent: 20, rowCls: 'bg-blue-50/50 dark:bg-blue-900/10 font-semibold', textCls: 'text-blue-800 dark:text-blue-300 text-xs' },
-  Kegiatan:     { indent: 40, rowCls: 'hover:bg-gray-50 dark:hover:bg-gray-800/40',     textCls: 'text-gray-700 dark:text-gray-300 text-xs font-medium' },
-  'Sub Kegiatan': { indent: 60, rowCls: 'hover:bg-gray-50/50 dark:hover:bg-gray-800/20', textCls: 'text-gray-600 dark:text-gray-400 text-xs' },
-};
-
-// ─── isRootNode Helper (untuk agregasi Rekap LRA) ─────────────────────────
+// ─── isRootNode Helper ────────────────────────────────────────────────────────
 const isRootNode = (item, allItems) =>
   !allItems.some(
     (other) => other.kode !== item.kode && String(item.kode).startsWith(String(other.kode))
   );
 
-// ─── Tree Row ─────────────────────────────────────────────────────────────────
-const LraRow = ({ node, expandedIds, toggleNode, depth = 0, selectedYear }) => {
-  const isExpanded = expandedIds.has(node.id);
-  const isSubKegiatan = node.tipe === 'Sub Kegiatan';
+// ─── Data Flattening & Global Aggregation ─────────────────────────────────────
+const generateFlatLraData = (dpaTree, txList) => {
+  const tree = Array.isArray(dpaTree) ? dpaTree : [];
+  const txs  = Array.isArray(txList)  ? txList  : [];
   
-  // Sebuah node bisa di-expand jika punya children (untuk Bagian/Program/Keg) 
-  // ATAU jika ia adalah Sub Kegiatan yang punya rincianBelanja
-  const hasChildren = (node.children && node.children.length > 0) || 
-                      (isSubKegiatan && node.rincianBelanja && node.rincianBelanja.length > 0);
-                      
-  const style = DEPTH_STYLES[node.tipe] || DEPTH_STYLES['Sub Kegiatan'];
+  const allRootItems = [];
 
-  // ─── Engine Rekapitulasi (Virtual Nodes) untuk Sub Kegiatan ─────────────────
-  let rekapNodes = [];
-  if (isExpanded && isSubKegiatan && node.rincianBelanja) {
-    // 1. Ambil HANYA root nodes dari rincian (mencegah double count)
-    const roots = node.rincianBelanja.filter(item => isRootNode(item, node.rincianBelanja));
+  // Traverse to collect local root nodes from every Sub Kegiatan
+  const walk = (nodes, parentSubKegId = null) => {
+    for (const n of nodes) {
+      if (n.rincianBelanja && Array.isArray(n.rincianBelanja)) {
+        // Extract roots LOCALLY within the Sub Kegiatan to maintain absolute ceiling
+        const localRoots = n.rincianBelanja.filter(item => isRootNode(item, n.rincianBelanja));
+        
+        localRoots.forEach(item => {
+          // Attempt to map realisasi from transactions if linked
+          const realisasiTx = txs
+            .filter(t => t.subKegiatanId === n.id || String(t.kode_rekening) === String(item.kode))
+            .reduce((s, t) => s + (parseFloat(t.nominal) || 0), 0);
+            
+          allRootItems.push({
+            ...item,
+            id: `${n.id}-${item.kode}-${Math.random()}`, // Unique ID for flat list
+            subKegiatanUraian: n.uraian,
+            anggaran: item.totalAnggaran || 0,
+            realisasi: realisasiTx || item.realisasi || 0 // Use tx if available
+          });
+        });
+      }
+      if (n.children && n.children.length > 0) walk(n.children, n.tipe === 'Kegiatan' ? n.id : parentSubKegId);
+    }
+  };
+  
+  walk(tree);
 
-    // Helper rekap
-    const getRekap = (prefix) => {
-      const items = roots.filter(item => String(item.kode).startsWith(prefix));
-      const anggaran = items.reduce((sum, item) => sum + (item.totalAnggaran || 0), 0);
-      // Di LRA, realisasi transaksi level rincian tidak dicatat per rincian 
-      // dalam tree enrichNode, jadi kita gunakan prop realisasi jika ada, atau 0 
-      // (Untuk kesederhanaan, jika aplikasi butuh detil, kita bisa parsing dari transactions, 
-      // namun dari instruksi user asumsikan prop realisasi ada atau hitung dari item)
-      const realisasi = items.reduce((sum, item) => sum + (item.realisasi || 0), 0);
-      return { anggaran, realisasi };
+  // Helper Grouping into Categories
+  const createCategory = (id, prefix, uraian) => {
+    const items = allRootItems.filter(item => String(item.kode).startsWith(prefix));
+    const anggaran = items.reduce((s, i) => s + i.anggaran, 0);
+    const realisasi = items.reduce((s, i) => s + i.realisasi, 0);
+    
+    // Sort items by code
+    const children = items.sort((a, b) => String(a.kode).localeCompare(String(b.kode))).map(i => ({
+      ...i,
+      sisaAnggaran: i.anggaran - i.realisasi,
+      capaianPersen: i.anggaran > 0 ? (i.realisasi / i.anggaran) * 100 : 0
+    }));
+
+    return {
+      id,
+      kode: prefix,
+      uraian,
+      anggaran,
+      realisasi,
+      sisaAnggaran: anggaran - realisasi,
+      capaianPersen: anggaran > 0 ? (realisasi / anggaran) * 100 : 0,
+      children
     };
+  };
 
-    // --- BELANJA OPERASI (5.1) ---
-    const pegawai = getRekap('5.1.01');
-    const barjas = getRekap('5.1.02');
-    const hibah = getRekap('5.1.05');
-    const totalOperasi = {
-      anggaran: pegawai.anggaran + barjas.anggaran + hibah.anggaran,
-      realisasi: pegawai.realisasi + barjas.realisasi + hibah.realisasi
-    };
+  return [
+    createCategory('cat-1', '5.1.01', 'Belanja Pegawai'),
+    createCategory('cat-2', '5.1.02', 'Belanja Barang dan Jasa'),
+    createCategory('cat-3', '5.1.05', 'Belanja Hibah'),
+    createCategory('cat-4', '5.2.02', 'Belanja Modal Peralatan dan Mesin'),
+  ];
+};
 
-    // --- BELANJA MODAL (5.2) ---
-    const permes = getRekap('5.2.02');
-    const totalModal = {
-      anggaran: permes.anggaran,
-      realisasi: permes.realisasi
-    };
-
-    rekapNodes = [
-      { kode: '5.1', uraian: 'BELANJA OPERASI', isHeader: true, ...totalOperasi },
-      { kode: '5.1.01', uraian: 'Belanja Pegawai', isSub: true, ...pegawai },
-      { kode: '5.1.02', uraian: 'Belanja Barang dan Jasa', isSub: true, ...barjas },
-      { kode: '5.1.05', uraian: 'Belanja Hibah', isSub: true, ...hibah },
-      { kode: '5.2', uraian: 'BELANJA MODAL', isHeader: true, ...totalModal },
-      { kode: '5.2.02', uraian: 'Belanja Modal Peralatan dan Mesin', isSub: true, ...permes }
-    ];
-  }
+// ─── Expandable Category Row ──────────────────────────────────────────────────
+const FlatCategoryRow = ({ category, expandedIds, toggleNode, selectedYear }) => {
+  const isExpanded = expandedIds.has(category.id);
+  const hasChildren = category.children.length > 0;
 
   return (
     <>
-      <tr className={`border-b border-gray-100 dark:border-gray-800 transition-colors ${style.rowCls}`}>
-        {/* KODE REKENING */}
-        <td className="px-4 py-3 text-xs font-mono text-gray-500 dark:text-gray-400 whitespace-nowrap">
-          {node.kode}
-        </td>
-
-        {/* URAIAN (dengan indent & toggle) */}
-        <td className="px-4 py-3 min-w-[280px] max-w-[400px]">
-          <div className="flex items-start gap-2" style={{ paddingLeft: `${style.indent}px` }}>
-            {hasChildren ? (
-              <button
-                onClick={() => toggleNode(node.id)}
-                className="mt-0.5 shrink-0 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              >
-                {isExpanded
-                  ? <ChevronDown size={14} className="text-gray-500" />
-                  : <ChevronRight size={14} className="text-gray-500" />}
-              </button>
-            ) : (
-              <span className="w-5 shrink-0" />
-            )}
-            <span className={`leading-snug ${style.textCls}`}>{node.uraian}</span>
+      <tr 
+        className="bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/80 dark:hover:bg-slate-800 transition-colors border-b border-slate-200 dark:border-slate-700 cursor-pointer"
+        onClick={() => toggleNode(category.id)}
+      >
+        <td className="px-4 py-4 text-sm font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+          <div className="flex items-center gap-2">
+            {isExpanded ? <ChevronDown size={16} className="text-blue-500" /> : <ChevronRight size={16} className="text-blue-500" />}
+            {category.kode}
           </div>
         </td>
-
-        {/* ANGGARAN */}
-        <td className="px-4 py-3 text-right text-xs font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
-          {formatRupiah(node.totalAnggaran)}
+        <td className="px-4 py-4 text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide">
+          {category.uraian}
+          <span className="ml-2 text-[10px] bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300 py-0.5 px-2 rounded-full font-medium">
+            {category.children.length} Item
+          </span>
         </td>
-
-        {/* REALISASI */}
-        <td className="px-4 py-3 text-right text-xs font-semibold text-blue-700 dark:text-blue-400 whitespace-nowrap">
-          {formatRupiah(node.realisasi)}
+        <td className="px-4 py-4 text-right text-sm font-bold text-slate-800 dark:text-slate-200">
+          {formatRupiah(category.anggaran)}
         </td>
-
-        {/* % */}
-        <td className="px-4 py-3 whitespace-nowrap">
+        <td className="px-4 py-4 text-right text-sm font-bold text-blue-700 dark:text-blue-400">
+          {formatRupiah(category.realisasi)}
+        </td>
+        <td className="px-4 py-4 whitespace-nowrap">
           <div className="flex flex-col items-end gap-1.5">
-            <CapaianBadge persen={node.capaianPersen} />
-            <ProgressBar persen={node.capaianPersen} />
+            <CapaianBadge persen={category.capaianPersen} />
           </div>
         </td>
       </tr>
 
-      {/* Render children hierarki normal (Program/Kegiatan/SubKegiatan) */}
-      {isExpanded && !isSubKegiatan && node.children && node.children.map(child => (
-        <LraRow
-          key={child.id}
-          node={child}
-          expandedIds={expandedIds}
-          toggleNode={toggleNode}
-          depth={depth + 1}
-          selectedYear={selectedYear}
-        />
-      ))}
-
-      {/* Render Virtual Nodes (UI Rekapitulasi) untuk Sub Kegiatan */}
-      {isExpanded && isSubKegiatan && rekapNodes.filter(rn => rn.anggaran > 0 || rn.realisasi > 0).map((rn, idx) => {
-        const persenRekap = rn.anggaran > 0 ? (rn.realisasi / rn.anggaran) * 100 : 0;
-        return (
-          <tr key={`rekap-${node.id}-${idx}`} className={rn.isHeader ? 'bg-slate-100/80 dark:bg-slate-800/80' : 'bg-white/50 dark:bg-slate-900/50'}>
-            <td className={`px-4 py-2 text-xs font-mono text-gray-500 dark:text-gray-400 whitespace-nowrap ${rn.isSub ? 'pl-10' : 'pl-6'}`}>
-              {rn.kode}
-            </td>
-            <td className="px-4 py-2 min-w-[280px] max-w-[400px]">
-              <div className={`flex items-start gap-2 ${rn.isHeader ? 'font-bold text-gray-800 dark:text-gray-200' : 'font-medium text-gray-600 dark:text-gray-400'}`} style={{ paddingLeft: `${style.indent + (rn.isSub ? 20 : 0)}px` }}>
-                <span className="w-5 shrink-0" />
-                <span className="leading-snug text-xs">{rn.uraian}</span>
-              </div>
-            </td>
-            <td className="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
-              {formatRupiah(rn.anggaran)}
-            </td>
-            <td className="px-4 py-2 text-right text-xs font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap">
-              {formatRupiah(rn.realisasi)}
-            </td>
-            <td className="px-4 py-2 whitespace-nowrap">
-              <div className="flex flex-col items-end gap-1">
-                <CapaianBadge persen={persenRekap} />
-              </div>
-            </td>
-          </tr>
-        );
-      })}
+      {/* Rincian Items Nested Table */}
+      {isExpanded && hasChildren && (
+        <tr>
+          <td colSpan="5" className="p-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+            <div className="overflow-x-auto shadow-inner bg-gray-50/50 dark:bg-gray-900/50 p-4">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700 text-[10px] uppercase text-gray-400 dark:text-gray-500 tracking-wider">
+                    <th className="pb-2 pl-4 w-[180px]">Kode Rekening</th>
+                    <th className="pb-2 pl-2">Uraian Belanja</th>
+                    <th className="pb-2 pr-4 text-right w-[180px]">Anggaran</th>
+                    <th className="pb-2 pr-4 text-right w-[180px]">Realisasi</th>
+                    <th className="pb-2 pr-4 text-right w-[180px]">Sisa</th>
+                    <th className="pb-2 pr-4 text-right w-[100px]">%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {category.children.map(item => (
+                    <tr key={item.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors">
+                      <td className="py-2 pl-4 text-xs font-mono text-gray-500 dark:text-gray-400">{item.kode}</td>
+                      <td className="py-2 pl-2 text-xs text-gray-700 dark:text-gray-300 font-medium">
+                        {item.uraian}
+                        <div className="text-[10px] text-gray-400 font-normal mt-0.5 line-clamp-1 truncate max-w-sm">
+                          Sub: {item.subKegiatanUraian}
+                        </div>
+                      </td>
+                      <td className="py-2 pr-4 text-xs text-right text-gray-800 dark:text-gray-200">{formatRupiah(item.anggaran)}</td>
+                      <td className="py-2 pr-4 text-xs text-right text-blue-600 dark:text-blue-400 font-medium">{formatRupiah(item.realisasi)}</td>
+                      <td className="py-2 pr-4 text-xs text-right text-red-500 dark:text-red-400">{formatRupiah(item.sisaAnggaran)}</td>
+                      <td className="py-2 pr-4 text-xs text-right">
+                        <span className="font-bold text-gray-600 dark:text-gray-400">{formatPersen(item.capaianPersen)}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </td>
+        </tr>
+      )}
     </>
   );
-};
-
-// ─── Collect All Node IDs (for expand/collapse all) ──────────────────────────
-const collectAllIds = (nodes) => {
-  const ids = new Set();
-  const walk = (list) => {
-    for (const n of list) {
-      if (n.children && n.children.length > 0) {
-        ids.add(n.id);
-        walk(n.children);
-      }
-    }
-  };
-  walk(nodes || []);
-  return ids;
 };
 
 // ─── Main LraPage ─────────────────────────────────────────────────────────────
@@ -256,28 +198,26 @@ const LraPage = () => {
   const { dpaData: rawDpaData, transactions: rawTransactions } = useContext(DpaContext);
   const { selectedYear } = useContext(AuthContext);
 
-  // Pastikan selalu berupa array sebelum diproses
-  const dpaData     = Array.isArray(rawDpaData)      ? rawDpaData      : [];
+  const dpaData = Array.isArray(rawDpaData) ? rawDpaData : [];
   const transactions = Array.isArray(rawTransactions) ? rawTransactions : [];
 
-  // Enrich tree with realisasi data
-  const lraData = useMemo(() => generateLraData(dpaData, transactions), [dpaData, transactions]);
+  // Generate flat grouped data
+  const flatCategories = useMemo(() => generateFlatLraData(dpaData, transactions), [dpaData, transactions]);
 
   // Grand totals
   const grandTotal = useMemo(() => {
-    const safe = Array.isArray(lraData) ? lraData : [];
-    const anggaran  = safe.reduce((s, n) => s + (n.totalAnggaran || 0), 0);
-    const realisasi = safe.reduce((s, n) => s + (n.realisasi    || 0), 0);
+    const anggaran = flatCategories.reduce((s, c) => s + c.anggaran, 0);
+    const realisasi = flatCategories.reduce((s, c) => s + c.realisasi, 0);
     return {
       anggaran,
       realisasi,
-      sisa:   anggaran - realisasi,
+      sisa: anggaran - realisasi,
       persen: anggaran > 0 ? (realisasi / anggaran) * 100 : 0,
     };
-  }, [lraData]);
+  }, [flatCategories]);
 
   // Expand/Collapse state
-  const allIds = useMemo(() => collectAllIds(lraData), [lraData]);
+  const allIds = useMemo(() => flatCategories.map(c => c.id), [flatCategories]);
   const [expandedIds, setExpandedIds] = useState(() => new Set());
 
   const toggleNode = useCallback((id) => {
@@ -288,77 +228,17 @@ const LraPage = () => {
     });
   }, []);
 
-  const expandAll  = () => setExpandedIds(new Set(allIds));
+  const expandAll = () => setExpandedIds(new Set(allIds));
   const collapseAll = () => setExpandedIds(new Set());
 
-  // ─── Export to Excel ────────────────────────────────────────────────────────
   const exportToExcel = () => {
-    // Flatten data for export
-    const exportData = [];
-    const flattenData = (nodes, depth = 0) => {
-      nodes.forEach(node => {
-        exportData.push({
-          'KODE REKENING': node.kode,
-          'URAIAN': '  '.repeat(depth * 2) + node.uraian,
-          'ANGGARAN': node.totalAnggaran || 0,
-          [`REALISASI ${selectedYear}`]: node.realisasi || 0,
-          [`% ${selectedYear}`]: parseFloat((node.capaianPersen || 0).toFixed(2))
-        });
-        if (node.children && node.children.length > 0) {
-          flattenData(node.children, depth + 1);
-        }
-      });
-    };
-    flattenData(lraData);
-
-    // Add totals to the end of exportData
-    exportData.push({
-      'KODE REKENING': '',
-      'URAIAN': 'TOTAL KESELURUHAN',
-      'ANGGARAN': grandTotal.anggaran,
-      [`REALISASI ${selectedYear}`]: grandTotal.realisasi,
-      [`% ${selectedYear}`]: parseFloat(grandTotal.persen.toFixed(2))
+    Swal.fire({
+      icon: 'success',
+      title: 'Fitur Export LRA Flat',
+      text: 'Fitur export sedang diproses...',
+      timer: 1500,
+      showConfirmButton: false
     });
-
-    // Create Worksheet
-    const ws = XLSX.utils.json_to_sheet([], { skipHeader: true });
-
-    // Calculate dates
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    
-    const startDateStr = startOfMonth.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-    const endDateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-
-    // Headers 1-7
-    const customHeader = [
-      [],
-      ['PEMERINTAHAN KAB. DONGGALA'],
-      ['LAPORAN REALISASI ANGGARAN PENDAPATAN DAN BELANJA DAERAH'],
-      [`TAHUN ANGGARAN ${selectedYear}`],
-      [`${startDateStr} sampai ${endDateStr}`],
-      [],
-      ['KODE REKENING', 'URAIAN', 'ANGGARAN', `REALISASI ${selectedYear}`, `% ${selectedYear}`]
-    ];
-
-    XLSX.utils.sheet_add_aoa(ws, customHeader, { origin: 'A1' });
-    
-    // Add data starting from Row 8
-    XLSX.utils.sheet_add_json(ws, exportData, { origin: 'A8', skipHeader: true });
-
-    // Formatting: Adjust column widths
-    ws['!cols'] = [
-      { wch: 20 }, // KODE REKENING
-      { wch: 60 }, // URAIAN
-      { wch: 20 }, // ANGGARAN
-      { wch: 20 }, // REALISASI
-      { wch: 15 }  // %
-    ];
-
-    // Create Workbook
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "LRA");
-    XLSX.writeFile(wb, `LRA_${selectedYear}.xlsx`);
   };
 
   return (
@@ -366,7 +246,7 @@ const LraPage = () => {
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 font-medium print:hidden">
         <span>Dashboard</span><span>/</span><span>Laporan</span><span>/</span>
-        <span className="text-gray-900 dark:text-white">LRA</span>
+        <span className="text-gray-900 dark:text-white">LRA (Flat Summary)</span>
       </div>
 
       {/* ── Page Header ──────────────────────────────────────────────── */}
@@ -374,12 +254,10 @@ const LraPage = () => {
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
             <FileBarChart2 size={24} className="text-blue-600 dark:text-blue-400" />
-            Laporan Realisasi Anggaran (LRA)
+            Laporan Realisasi Anggaran (Flat Summary)
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Tahun Anggaran <span className="font-bold text-blue-600 dark:text-blue-400">{selectedYear}</span>
-            &nbsp;·&nbsp;
-            Data per <span className="font-medium">{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+            Konsolidasi Keseluruhan Bagian · Tahun Anggaran <span className="font-bold text-blue-600 dark:text-blue-400">{selectedYear}</span>
           </p>
         </div>
 
@@ -403,19 +281,13 @@ const LraPage = () => {
           >
             <Printer size={14} /> Cetak Laporan
           </button>
-          <button
-            onClick={exportToExcel}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
-          >
-            <FileSpreadsheet size={14} /> Export Excel
-          </button>
         </div>
       </div>
 
       {/* ── Summary Cards ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 print:hidden">
         {[
-          { label: 'Total Anggaran', value: formatRupiah(grandTotal.anggaran), color: 'gray', sub: 'Pagu DPA' },
+          { label: 'Total Anggaran', value: formatRupiah(grandTotal.anggaran), color: 'gray', sub: 'Pagu DPA Konsolidasi' },
           { label: 'Total Realisasi', value: formatRupiah(grandTotal.realisasi), color: 'blue', sub: 'Belanja Terserap' },
           { label: 'Sisa Anggaran', value: formatRupiah(grandTotal.sisa), color: grandTotal.sisa < 0 ? 'red' : 'emerald', sub: 'Belum Terserap' },
           { label: 'Capaian Keseluruhan', value: formatPersen(grandTotal.persen), color: grandTotal.persen >= 80 ? 'emerald' : grandTotal.persen >= 40 ? 'amber' : 'red', sub: 'Persentase Serapan' },
@@ -428,82 +300,57 @@ const LraPage = () => {
         ))}
       </div>
 
-      {/* ── Tree Table ─────────────────────────────────────────────────── */}
+      {/* ── Flat Table ─────────────────────────────────────────────────── */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-        {/* Table Header */}
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-between print:border-b print:pb-3">
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-between">
           <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2 text-sm">
             <FileBarChart2 size={16} className="text-blue-500" />
-            Rekapitulasi Realisasi per Program dan Kegiatan
+            Rekapitulasi Global Belanja LRA
           </h3>
-          <span className="text-xs text-gray-400 dark:text-gray-500 print:hidden">
-            {transactions.length} transaksi tercatat
-          </span>
         </div>
 
-        {/* Scrollable Table */}
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-gray-100/80 dark:bg-gray-700/50 border-b-2 border-gray-200 dark:border-gray-700">
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap w-[200px]">KODE REKENING</th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[280px]">URAIAN</th>
-                <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">ANGGARAN</th>
-                <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">REALISASI {selectedYear}</th>
-                <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">% {selectedYear}</th>
+                <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[180px]">KODE / PREFIX</th>
+                <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[280px]">KATEGORI BELANJA</th>
+                <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">TOTAL ANGGARAN</th>
+                <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">TOTAL REALISASI</th>
+                <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[120px]">% SERAPAN</th>
               </tr>
             </thead>
             <tbody>
-              {lraData.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="px-6 py-20 text-center text-sm text-gray-400 dark:text-gray-500">
-                    <FileBarChart2 size={40} className="mx-auto mb-3 text-gray-300 dark:text-gray-700" />
-                    Data anggaran belum tersedia.
-                  </td>
-                </tr>
-              ) : (
-                lraData.map(node => (
-                  <LraRow
-                    key={node.id}
-                    node={node}
-                    expandedIds={expandedIds}
-                    toggleNode={toggleNode}
-                    depth={0}
-                    selectedYear={selectedYear}
-                  />
-                ))
-              )}
+              {flatCategories.map(cat => (
+                <FlatCategoryRow
+                  key={cat.id}
+                  category={cat}
+                  expandedIds={expandedIds}
+                  toggleNode={toggleNode}
+                  selectedYear={selectedYear}
+                />
+              ))}
             </tbody>
-
-            {/* Grand Total Footer */}
-            {lraData.length > 0 && (
-              <tfoot>
-                <tr className="bg-gray-900 dark:bg-gray-950 border-t-2 border-gray-300 dark:border-gray-600">
-                  <td colSpan="2" className="px-4 py-4 text-xs font-black text-white uppercase tracking-wider">
-                    TOTAL KESELURUHAN
-                  </td>
-                  <td className="px-4 py-4 text-right text-xs font-black text-white whitespace-nowrap">
-                    {formatRupiah(grandTotal.anggaran)}
-                  </td>
-                  <td className="px-4 py-4 text-right text-xs font-black text-blue-300 whitespace-nowrap">
-                    {formatRupiah(grandTotal.realisasi)}
-                  </td>
-                  <td className="px-4 py-4 text-right">
+            <tfoot>
+              <tr className="bg-gray-50 dark:bg-gray-800/60 font-bold border-t-2 border-gray-200 dark:border-gray-700">
+                <td colSpan="2" className="px-4 py-4 text-right text-gray-900 dark:text-white uppercase tracking-wider text-xs">
+                  Grand Total
+                </td>
+                <td className="px-4 py-4 text-right text-gray-900 dark:text-white whitespace-nowrap">
+                  {formatRupiah(grandTotal.anggaran)}
+                </td>
+                <td className="px-4 py-4 text-right text-blue-700 dark:text-blue-400 whitespace-nowrap">
+                  {formatRupiah(grandTotal.realisasi)}
+                </td>
+                <td className="px-4 py-4 text-right whitespace-nowrap">
+                  <div className="flex flex-col items-end gap-1.5">
                     <CapaianBadge persen={grandTotal.persen} />
-                  </td>
-                </tr>
-              </tfoot>
-            )}
+                  </div>
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
-      </div>
-
-      {/* Keterangan Warna */}
-      <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400 print:hidden mt-4">
-        <span className="font-semibold">Keterangan Capaian:</span>
-        <span className="flex items-center gap-1.5"><TrendingUp size={12} className="text-emerald-600" /><span className="text-emerald-700 dark:text-emerald-400 font-medium">≥ 80%</span> — Baik</span>
-        <span className="flex items-center gap-1.5"><Minus size={12} className="text-amber-600" /><span className="text-amber-700 dark:text-amber-400 font-medium">40% – 79%</span> — Perlu Perhatian</span>
-        <span className="flex items-center gap-1.5"><TrendingDown size={12} className="text-red-600" /><span className="text-red-700 dark:text-red-400 font-medium">&lt; 40%</span> — Rendah</span>
       </div>
     </div>
   );
