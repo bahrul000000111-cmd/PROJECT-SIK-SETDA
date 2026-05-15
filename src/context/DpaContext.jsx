@@ -57,7 +57,7 @@ const transformHierarchyToTree = (rawData) => {
     const programs = (bagian.programs || []).map((program) => {
       const kegiatans = (program.kegiatans || []).map((kegiatan) => {
         const subKegiatans = (kegiatan.sub_kegiatans || []).map((subKeg) => {
-          const rincianBelanja = (subKeg.uraians || []).map((u) => ({
+          const rincianBelanjaRaw = (subKeg.uraians || []).map((u) => ({
             id:            u.id,
             kode:          u.kode_rekening || String(u.uraian || '').substring(0, 20),
             uraian:        u.uraian,
@@ -65,6 +65,13 @@ const transformHierarchyToTree = (rawData) => {
             totalAnggaran: parseFloat(u.pagu_anggaran) || 0,
             total:         parseFloat(u.pagu_anggaran) || 0,
           }));
+
+          const rincianBelanja = rincianBelanjaRaw.filter((item, index, self) => {
+              const hasChildren = self.some(other => 
+                  other.kode !== item.kode && String(other.kode).startsWith(String(item.kode))
+              );
+              return !hasChildren;
+          });
 
           const totalSubKeg = rincianBelanja.reduce((s, r) => s + r.totalAnggaran, 0);
 

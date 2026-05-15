@@ -84,18 +84,11 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
   const styles = getTypeStyles(node.tipe);
   const IconType = styles.icon;
 
-  const validRincian = (node.rincianBelanja || []).filter((item, index, self) => {
-      const hasChildren = self.some(other => 
-          other.kode !== item.kode && other.kode.startsWith(item.kode)
-      );
-      return !hasChildren;
-  });
-
-  const totalOperasi = validRincian
+  const totalOperasi = (node.rincianBelanja || [])
       .filter(item => item.kode && String(item.kode).startsWith('5.1'))
       .reduce((sum, item) => sum + (item.total || item.totalAnggaran || 0), 0);
 
-  const totalModal = validRincian
+  const totalModal = (node.rincianBelanja || [])
       .filter(item => item.kode && String(item.kode).startsWith('5.2'))
       .reduce((sum, item) => sum + (item.total || item.totalAnggaran || 0), 0);
 
@@ -210,7 +203,7 @@ const ExpandableRow = ({ node, level = 0, forceExpandAll, onEdit, onAddChild, on
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {validRincian.map(rb => (
+                {(node.rincianBelanja || []).map(rb => (
                   <tr key={rb.id} className="group/row hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors bg-white dark:bg-gray-800/30">
                     <td className="px-4 py-4 font-medium text-gray-700 dark:text-gray-300">{rb.kode}</td>
                     <td className="px-4 py-4 text-gray-600 dark:text-gray-400">{rb.uraian}</td>
