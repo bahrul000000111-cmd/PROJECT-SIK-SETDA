@@ -4,13 +4,14 @@ import { Navigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, KeyRound, X, Users, Shield, Search, AlertTriangle, Loader2 } from 'lucide-react';
 import api from '../api';
 
-// Admin tidak boleh membuat akun Admin baru via UI (prinsip keamanan otoritas utama)
+// Admin tidak boleh membuat akun Admin baru via UI (prinsip keamanan)
 const JABATAN_OPTIONS = ['Pengguna/Staf', 'Bendahara', 'Pemeriksa'];
 
 const initialFormState = {
   nip: '',
   namaLengkap: '',
   role: 'Pengguna/Staf',
+  kode_bagian: '',
   instansi: 'Sekretariat Daerah',
   username: '',
   password: '',
@@ -23,6 +24,7 @@ const PenggunaPage = () => {
   if (currentUser?.role !== 'Admin') {
     return <Navigate to="/dashboard" replace />;
   }
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' | 'edit' | 'reset'
   const [form, setForm] = useState(initialFormState);
@@ -30,10 +32,19 @@ const PenggunaPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [deleteConfirm, setDeleteConfirm] = useState(null); // id to delete
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [bagianList, setBagianList] = useState([]);
 
+  // ─── Fetch Bagian List ──────────────────────────────────────────────────────
+  useEffect(() => {
+    api.get('/bagians/list')
+      .then(res => setBagianList(res.data.data || []))
+      .catch(err => console.error('Gagal mengambil daftar bagian:', err));
+  }, []);
+
+  // ─── Fetch Users ────────────────────────────────────────────────────────────
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -47,9 +58,7 @@ const PenggunaPage = () => {
     }
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  useEffect(() => { fetchUsers(); }, []);
 
   const filtered = users.filter(u =>
     u.nama_lengkap?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -66,7 +75,14 @@ const PenggunaPage = () => {
 
   const openEditModal = (user) => {
     setEditTarget(user);
-    setForm({ ...user, password: '' });
+    setForm({
+      nip: user.nip || '',
+      namaLengkap: user.nama_lengkap || '',
+      role: user.role || 'Pengguna/Staf',
+      kode_bagian: user.kode_bagian || '',
+      username: user.username || '',
+      password: '',
+    });
     setError('');
     setModalMode('edit');
     setIsModalOpen(true);
@@ -101,11 +117,17 @@ const PenggunaPage = () => {
           setError('Semua field wajib diisi!');
           return;
         }
+        if (form.role !== 'Admin' && !form.kode_bagian) {
+          setError('Bagian wajib dipilih untuk role selain Admin!');
+          return;
+        }
         await api.post('/users', {
           nama_lengkap: form.namaLengkap,
-          username: form.username,
-          password: form.password,
-          role: form.role,
+          username:     form.username,
+          password:     form.password,
+          role:         form.role,
+          nip:          form.nip || undefined,
+          kode_bagian:  form.role !== 'Admin' ? form.kode_bagian : null,
         });
         setSuccessMsg('Akun berhasil ditambahkan!');
       } else if (modalMode === 'edit') {
@@ -113,12 +135,17 @@ const PenggunaPage = () => {
           setError('Nama Lengkap wajib diisi!');
           return;
         }
-        const payload = {
+        if (form.role !== 'Admin' && !form.kode_bagian) {
+          setError('Bagian wajib dipilih untuk role selain Admin!');
+          return;
+        }
+        await api.put(`/users/${editTarget.id}`, {
           nama_lengkap: form.namaLengkap,
-          username: form.username,
-          role: form.role,
-        };
-        await api.put(`/users/${editTarget.id}`, payload);
+          username:     form.username,
+          role:         form.role,
+          nip:          form.nip || undefined,
+          kode_bagian:  form.role !== 'Admin' ? form.kode_bagian : null,
+        });
         setSuccessMsg('Data pengguna berhasil diperbarui!');
       } else if (modalMode === 'reset') {
         if (!form.password) {
@@ -134,7 +161,14 @@ const PenggunaPage = () => {
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || 'Terjadi kesalahan pada server');
+      // Tangkap error validasi Laravel (422) dengan detail field
+      const errData = err.response?.data;
+      if (errData?.errors) {
+        const firstKey = Object.keys(errData.errors)[0];
+        setError(errData.errors[firstKey]?.[0] || 'Validasi gagal.');
+      } else {
+        setError(errData?.message || 'Terjadi kesalahan pada server');
+      }
     }
   };
 
@@ -153,10 +187,10 @@ const PenggunaPage = () => {
 
   const roleColor = (role) => {
     switch(role) {
-      case 'Admin': return 'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800';
-      case 'Bendahara': return 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800';
-      case 'Pemeriksa': return 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800';
-      default: return 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700';
+      case 'Admin':         return 'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800';
+      case 'Bendahara':     return 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800';
+      case 'Pemeriksa':     return 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800';
+      default:              return 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700';
     }
   };
 
@@ -197,10 +231,10 @@ const PenggunaPage = () => {
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Pengguna', value: users.length, color: 'blue' },
-          { label: 'Admin', value: users.filter(u => u.role === 'Admin').length, color: 'red' },
-          { label: 'Pemeriksa', value: users.filter(u => u.role === 'Pemeriksa').length, color: 'emerald' },
-          { label: 'Pengguna/Staf', value: users.filter(u => u.role === 'Pengguna/Staf').length, color: 'indigo' },
+          { label: 'Total Pengguna',  value: users.length,                                           color: 'blue'   },
+          { label: 'Admin',           value: users.filter(u => u.role === 'Admin').length,           color: 'red'    },
+          { label: 'Pemeriksa',       value: users.filter(u => u.role === 'Pemeriksa').length,       color: 'emerald'},
+          { label: 'Pengguna/Staf',   value: users.filter(u => u.role === 'Pengguna/Staf').length,   color: 'indigo' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
             <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">{label}</p>
@@ -211,7 +245,7 @@ const PenggunaPage = () => {
 
       {/* Table Card */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-        {/* Table Header */}
+        {/* Table Toolbar */}
         <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-between gap-4">
           <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <Users size={18} className="text-blue-500" />
@@ -236,6 +270,7 @@ const PenggunaPage = () => {
               <tr className="bg-gray-50/80 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aksi</th>
                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jabatan</th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Bagian</th>
                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">NIP</th>
                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Lengkap</th>
                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Username</th>
@@ -244,42 +279,33 @@ const PenggunaPage = () => {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {loading ? (
                 <tr>
-                  <td colSpan="5" className="px-6 py-16 text-center">
+                  <td colSpan="6" className="px-6 py-16 text-center">
                     <Loader2 size={32} className="mx-auto mb-3 animate-spin text-blue-500" />
                     <p className="text-sm text-gray-500 dark:text-gray-400">Memuat data pengguna...</p>
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-6 py-16 text-center text-sm text-gray-400 dark:text-gray-500">
+                  <td colSpan="6" className="px-6 py-16 text-center text-sm text-gray-400 dark:text-gray-500">
                     <Users size={40} className="mx-auto mb-3 text-gray-300 dark:text-gray-700" />
                     {users.length === 0 ? 'Belum ada pengguna terdaftar.' : 'Tidak ada pengguna yang cocok dengan pencarian.'}
                   </td>
                 </tr>
               ) : (
-                filtered.map((user, idx) => (
+                filtered.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => openEditModal(user)}
-                          title="Edit Data"
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
-                        >
+                        <button onClick={() => openEditModal(user)} title="Edit Data"
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors">
                           <Pencil size={15} />
                         </button>
-                        <button
-                          onClick={() => openResetModal(user)}
-                          title="Reset Password"
-                          className="p-1.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-md transition-colors"
-                        >
+                        <button onClick={() => openResetModal(user)} title="Reset Password"
+                          className="p-1.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-md transition-colors">
                           <KeyRound size={15} />
                         </button>
-                        <button
-                          onClick={() => setDeleteConfirm(user)}
-                          title="Hapus Akun"
-                          className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
-                        >
+                        <button onClick={() => setDeleteConfirm(user)} title="Hapus Akun"
+                          className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors">
                           <Trash2 size={15} />
                         </button>
                       </div>
@@ -288,6 +314,16 @@ const PenggunaPage = () => {
                       <span className={`text-[11px] font-bold px-2.5 py-1 rounded-md border ${roleColor(user.role)}`}>
                         {user.role || 'Pengguna/Staf'}
                       </span>
+                    </td>
+                    {/* ── KOLOM BAGIAN (BARU) ── */}
+                    <td className="px-6 py-4 text-sm">
+                      {user.role === 'Admin' ? (
+                        <span className="text-xs text-gray-400 dark:text-gray-500 italic">Semua Bagian (Sekretariat)</span>
+                      ) : (
+                        <span className="text-gray-700 dark:text-gray-300">
+                          {user.bagian?.nama_bagian || user.kode_bagian || '-'}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm font-mono text-gray-600 dark:text-gray-400">{user.nip || '-'}</td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{user.nama_lengkap}</td>
@@ -309,16 +345,16 @@ const PenggunaPage = () => {
         )}
       </div>
 
-      {/* ====== MODAL TAMBAH/EDIT/RESET ====== */}
+      {/* ====== MODAL TAMBAH / EDIT / RESET ====== */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md border border-gray-100 dark:border-gray-800 animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800">
               <h3 className="font-bold text-gray-900 dark:text-white">
-                {modalMode === 'add' && 'Tambah Akun Pengguna'}
-                {modalMode === 'edit' && `Edit Data: ${editTarget?.namaLengkap}`}
-                {modalMode === 'reset' && `Reset Password: ${editTarget?.namaLengkap}`}
+                {modalMode === 'add'   && 'Tambah Akun Pengguna'}
+                {modalMode === 'edit'  && `Edit Data: ${editTarget?.nama_lengkap}`}
+                {modalMode === 'reset' && `Reset Password: ${editTarget?.nama_lengkap}`}
               </h3>
               <button onClick={closeModal} className="p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors cursor-pointer">
                 <X size={18} />
@@ -362,6 +398,28 @@ const PenggunaPage = () => {
                     </div>
                   </div>
 
+                  {/* ── DROPDOWN BAGIAN (conditional) ── */}
+                  {form.role !== 'Admin' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                        Pilih Bagian <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        name="kode_bagian"
+                        value={form.kode_bagian}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none appearance-none transition-all"
+                      >
+                        <option value="">-- Pilih Bagian --</option>
+                        {bagianList.map(b => (
+                          <option key={b.kode_bagian} value={b.kode_bagian}>
+                            {b.nama_bagian}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Nama Lengkap</label>
                     <input
@@ -389,7 +447,7 @@ const PenggunaPage = () => {
                 </>
               )}
 
-              {/* Password: show on Add mode, hide on Edit; for Reset only show password */}
+              {/* Password: show on Add & Reset mode */}
               {(modalMode === 'add' || modalMode === 'reset') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
@@ -408,19 +466,14 @@ const PenggunaPage = () => {
 
               {/* Modal Footer */}
               <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                >
+                <button type="button" onClick={closeModal}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
                   Batal
                 </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2.5 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
-                >
-                  {modalMode === 'add' && 'Tambah Akun'}
-                  {modalMode === 'edit' && 'Simpan Perubahan'}
+                <button type="submit"
+                  className="flex-1 px-4 py-2.5 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer">
+                  {modalMode === 'add'   && 'Tambah Akun'}
+                  {modalMode === 'edit'  && 'Simpan Perubahan'}
                   {modalMode === 'reset' && 'Reset Password'}
                 </button>
               </div>
@@ -441,16 +494,12 @@ const PenggunaPage = () => {
               Akun <span className="font-semibold text-gray-900 dark:text-white">@{deleteConfirm.username}</span> akan dihapus secara permanen dan tidak dapat dikembalikan.
             </p>
             <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2.5 text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-              >
+              <button onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-4 py-2.5 text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
                 Batal
               </button>
-              <button
-                onClick={() => handleDelete(deleteConfirm.id)}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors active:scale-[0.98] cursor-pointer"
-              >
+              <button onClick={() => handleDelete(deleteConfirm.id)}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors active:scale-[0.98] cursor-pointer">
                 Hapus
               </button>
             </div>
