@@ -294,13 +294,14 @@ export const DpaProvider = ({ children }) => {
   const addTransaction = useCallback(async (formData) => {
     try {
       const payload = {
-        nomor_spm:      formData.nomorSpm,
-        tanggal_spm:    formData.tanggalSpm,
-        jenis_spm:      formData.jenisSpm,
-        bagian:         formData.bagianName || formData.bagianId || null,
-        uraian_belanja: formData.uraian,
-        sumber_dana:    formData.sumberDana,
-        nominal:        formData.nominal,
+        nomor_spm:          formData.nomorSpm,
+        tanggal_spm:        formData.tanggalSpm,
+        jenis_spm:          formData.jenisSpm,
+        bagian:             formData.bagianName || formData.bagianId || null,
+        kode_sub_kegiatan:  formData.subKegiatanId || null,
+        uraian_belanja:     formData.uraian,
+        sumber_dana:        formData.sumberDana,
+        nominal:            formData.nominal,
         ...(formData.adaPajak && {
           pajak: {
             tanggal_pajak: formData.tanggalPajak,
@@ -313,7 +314,6 @@ export const DpaProvider = ({ children }) => {
 
       const { data } = await api.post('/transactions', payload);
       if (data.success) {
-        // data.data adalah objek transaksi tunggal dari API (bukan array)
         const newTx = transformTransaction(data.data);
         if (newTx) {
           setTransactions(prev => {
@@ -325,6 +325,11 @@ export const DpaProvider = ({ children }) => {
       }
       return { success: false, message: data.message };
     } catch (err) {
+      // Ekstrak error field 'nominal' dari respons 422 untuk validasi sisa anggaran
+      const errData = err.response?.data;
+      if (errData?.errors?.nominal) {
+        return { success: false, message: errData.errors.nominal[0], fieldError: 'nominal' };
+      }
       return { success: false, message: getApiErrorMessage(err, 'Gagal menyimpan transaksi.') };
     }
   }, []);

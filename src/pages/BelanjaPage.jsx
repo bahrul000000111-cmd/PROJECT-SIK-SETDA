@@ -62,8 +62,16 @@ const BelanjaPage = () => {
 
   const [form, setForm] = useState(emptyForm);
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting]     = useState(false);
+  const [submitError, setSubmitError]       = useState('');
+  const [nominalFieldError, setNominalFieldError] = useState(''); // Phase 3: 422 sisa anggaran
+
+  // Phase 2: Filter & Pagination states untuk Riwayat Transaksi
+  const [startDate, setStartDate]   = useState('');
+  const [endDate, setEndDate]       = useState('');
+  const [filterActive, setFilterActive] = useState({ start: '', end: '' });
+  const [currentPage, setCurrentPage]   = useState(1);
+  const PAGE_SIZE = 10;
 
   const programList = useMemo(() => collectByTipe(dpaData, 'Program'), [dpaData]);
   const kegiatanList = useMemo(() => {
@@ -108,6 +116,7 @@ const BelanjaPage = () => {
     e.preventDefault();
     if (isDisabled || isSubmitting) return;
     setSubmitError('');
+    setNominalFieldError('');
     setIsSubmitting(true);
     try {
       const result = await addTransaction({
@@ -132,6 +141,9 @@ const BelanjaPage = () => {
       });
       if (result.success) {
         setForm(emptyForm);
+      } else if (result.fieldError === 'nominal') {
+        // Phase 3: 422 sisa anggaran — tampilkan di bawah input nominal
+        setNominalFieldError(result.message);
       } else {
         setSubmitError(result.message || 'Gagal menyimpan transaksi.');
       }
@@ -141,6 +153,29 @@ const BelanjaPage = () => {
   };
 
   const totalSeluruh = (Array.isArray(transactions) ? transactions : []).reduce((s, t) => s + (t?.nominal || 0), 0);
+
+  // ── Phase 2: Filter & Pagination logic (client-side on global transactions) ──
+  const filteredTx = (Array.isArray(transactions) ? transactions : []).filter(tx => {
+    if (!filterActive.start && !filterActive.end) return true;
+    const txDate = tx.tanggalSpm || '';
+    if (filterActive.start && txDate < filterActive.start) return false;
+    if (filterActive.end   && txDate > filterActive.end)   return false;
+    return true;
+  });
+  const totalPages   = Math.max(1, Math.ceil(filteredTx.length / PAGE_SIZE));
+  const safePage     = Math.min(currentPage, totalPages);
+  const pagedTx      = filteredTx.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const applyFilter = () => {
+    setFilterActive({ start: startDate, end: endDate });
+    setCurrentPage(1);
+  };
+  const clearFilter = () => {
+    setStartDate('');
+    setEndDate('');
+    setFilterActive({ start: '', end: '' });
+    setCurrentPage(1);
+  };
 
   return (
     <div className="flex flex-col gap-6 pb-10">
@@ -197,8 +232,13 @@ const BelanjaPage = () => {
               )}
 
               <Field label="Nominal Belanja (Rp)" required>
-                <input name="nominal" value={form.nominal} onChange={e => set('nominal', rupiahInput(e.target.value))} placeholder="0" className={iCls + (isOverBudget ? ' border-red-400 dark:border-red-500 focus:ring-red-500' : '')} />
+                <input name="nominal" value={form.nominal} onChange={e => set('nominal', rupiahInput(e.target.value))} placeholder="0" className={iCls + ((isOverBudget || nominalFieldError) ? ' border-red-400 dark:border-red-500 focus:ring-red-500' : '')} />
                 {isOverBudget && <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1"><AlertCircle size={12} /> Melebihi sisa pagu!</p>}
+                {nominalFieldError && !isOverBudget && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                    <AlertCircle size={12} /> {nominalFieldError}
+                  </p>
+                )}
               </Field>
 
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider pt-1">Pajak</p>
@@ -231,9 +271,38 @@ const BelanjaPage = () => {
 
         <div className={isPemeriksa ? 'xl:col-span-3' : 'xl:col-span-2'}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex justify-between items-center">
+            {/* Toolbar: judul + filter tanggal */}
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex flex-wrap items-center justify-between gap-3">
               <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2"><Info size={18} className="text-emerald-500" /> Riwayat Transaksi</h3>
-              <span className="text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-md">{transactions.length} Transaksi</span>
+              {/* Phase 2: Date Filter UI */}
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  className="text-sm px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1e293b] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+                <span className="text-xs text-gray-400">s/d</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={e => setEndDate(e.target.value)}
+                  className="text-sm px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1e293b] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+                <button
+                  onClick={applyFilter}
+                  className="px-3 py-1.5 text-sm font-semibold rounded-lg bg-[#1e293b] text-white hover:bg-slate-700 transition-colors"
+                >Filter</button>
+                {(filterActive.start || filterActive.end) && (
+                  <button
+                    onClick={clearFilter}
+                    className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >Reset</button>
+                )}
+                <span className="text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-md">
+                  {filteredTx.length} Transaksi
+                </span>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-sm whitespace-nowrap">
@@ -243,9 +312,11 @@ const BelanjaPage = () => {
                   ))}
                 </tr></thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {transactions.length === 0 ? (
-                    <tr><td colSpan={isPemeriksa ? 7 : 8} className="px-6 py-14 text-center text-sm text-gray-400">Belum ada transaksi yang dicatat.</td></tr>
-                  ) : transactions.map(tx => (
+                  {pagedTx.length === 0 ? (
+                    <tr><td colSpan={isPemeriksa ? 7 : 8} className="px-6 py-14 text-center text-sm text-gray-400">
+                      {filterActive.start || filterActive.end ? 'Tidak ada transaksi untuk rentang tanggal ini.' : 'Belum ada transaksi yang dicatat.'}
+                    </td></tr>
+                  ) : pagedTx.map(tx => (
                     <tr key={tx.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{tx.tanggalSpm || '-'}</td>
                       <td className="px-4 py-3 font-mono font-medium text-gray-900 dark:text-white">{tx.nomorSpm || '-'}</td>
@@ -258,9 +329,53 @@ const BelanjaPage = () => {
                     </tr>
                   ))}
                 </tbody>
-                {transactions.length > 0 && (<tfoot><tr className="bg-gray-50 dark:bg-gray-800 border-t-2 border-gray-200 dark:border-gray-700"><td colSpan="5" className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-white text-right">Total Seluruh Belanja</td><td className="px-4 py-3 text-sm font-bold text-blue-600 dark:text-blue-400 text-right">{formatRupiah(totalSeluruh)}</td><td colSpan={isPemeriksa ? 1 : 2} /></tr></tfoot>)}
+                {filteredTx.length > 0 && (<tfoot><tr className="bg-gray-50 dark:bg-gray-800 border-t-2 border-gray-200 dark:border-gray-700"><td colSpan="5" className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-white text-right">Total Seluruh Belanja</td><td className="px-4 py-3 text-sm font-bold text-blue-600 dark:text-blue-400 text-right">{formatRupiah(totalSeluruh)}</td><td colSpan={isPemeriksa ? 1 : 2} /></tr></tfoot>)}
               </table>
             </div>
+
+            {/* Phase 2: Pagination UI */}
+            {totalPages > 1 && (
+              <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/30 flex items-center justify-between gap-4">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Halaman {safePage} dari {totalPages} &bull; {filteredTx.length} data
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={safePage === 1}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >← Prev</button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                    .reduce((acc, p, idx, arr) => {
+                      if (idx > 0 && p - arr[idx - 1] > 1) acc.push('...');
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((item, idx) =>
+                      item === '...' ? (
+                        <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">…</span>
+                      ) : (
+                        <button
+                          key={item}
+                          onClick={() => setCurrentPage(item)}
+                          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                            item === safePage
+                              ? 'bg-blue-600 text-white'
+                              : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                          }`}
+                        >{item}</button>
+                      )
+                    )
+                  }
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={safePage === totalPages}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >Next →</button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
