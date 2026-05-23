@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }) => {
   const login = useCallback(async (username, password) => {
     setIsLoggingIn(true);
     try {
-      const { data } = await api.post('/login', { username, password });
+      const { data } = await api.post('login', { username, password });
 
       if (!data.success) {
         return { success: false, message: data.message || 'Login gagal.' };
@@ -97,7 +97,7 @@ export const AuthProvider = ({ children }) => {
    */
   const logout = useCallback(async () => {
     try {
-      await api.post('/logout');
+      await api.post('logout');
     } catch {
       // Abaikan error — prioritas adalah bersihkan sisi client
     } finally {
