@@ -13,7 +13,7 @@ import axios from 'axios';
 
 // ─── Instance Utama ───────────────────────────────────────────────────────────
 const api = axios.create({
-  baseURL: 'https://federal-alexander-grateful-aqua.trycloudflare.com/student03/api/',
+  baseURL: import.meta.env.VITE_API_URL,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
