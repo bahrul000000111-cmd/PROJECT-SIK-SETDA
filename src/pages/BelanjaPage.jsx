@@ -123,7 +123,25 @@ const BelanjaPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isDisabled || isSubmitting) return;
+    if (isSubmitting) return;
+
+    // ── Frontend validation: give the user a clear visible error instead of a silent lock ──
+    if (!form.nomorSpm.trim())        { setSubmitError('Nomor SPM wajib diisi.');              return; }
+    if (!form.tanggalSpm)             { setSubmitError('Tanggal SPM wajib diisi.');            return; }
+    if (!form.programId)              { setSubmitError('Program wajib dipilih.');              return; }
+    if (!form.kegiatanId)             { setSubmitError('Kegiatan wajib dipilih.');             return; }
+    if (!form.subKegiatanId)          { setSubmitError('Sub Kegiatan wajib dipilih.');         return; }
+    if (!form.uraianBelanjaId)        { setSubmitError('Uraian Belanja wajib dipilih.');       return; }
+    if (!form.uraian)                 { setSubmitError('Uraian belanja belum terisi — pilih Uraian Belanja terlebih dahulu.'); return; }
+    if (numNominal <= 0)              { setSubmitError('Nominal Belanja wajib diisi dan harus lebih dari 0.'); return; }
+    if (isOverBudget)                 { setSubmitError(`Nominal melebihi sisa pagu anggaran (${formatRupiah(sisaPagu)}).`); return; }
+    if (form.adaPajak) {
+      if (!form.jenisPajak)           { setSubmitError('Jenis Pajak wajib dipilih.');          return; }
+      if (!form.ntpn.trim())          { setSubmitError('NTPN wajib diisi.');                   return; }
+      if (numPajak <= 0)              { setSubmitError('Nominal Pajak harus lebih dari 0.');   return; }
+      if (!form.tanggalPajak)         { setSubmitError('Tanggal Pajak wajib diisi.');          return; }
+    }
+
     setSubmitError('');
     setNominalFieldError('');
     setIsSubmitting(true);
@@ -151,10 +169,11 @@ const BelanjaPage = () => {
       if (result.success) {
         setForm(emptyForm);
       } else if (result.fieldError === 'nominal') {
-        // Phase 3: 422 sisa anggaran — tampilkan di bawah input nominal
-        setNominalFieldError(result.message);
+        // 422 sisa anggaran — tampilkan di bawah input nominal
+        setNominalFieldError(result.message || 'Nominal melebihi sisa anggaran.');
       } else {
-        setSubmitError(result.message || 'Gagal menyimpan transaksi.');
+        // Semua error lain (nomor_spm duplikat, 500, network) — tampilkan di alert box
+        setSubmitError(result.message || 'Gagal menyimpan transaksi. Periksa kembali data Anda.');
       }
     } finally {
       setIsSubmitting(false);
@@ -270,8 +289,19 @@ const BelanjaPage = () => {
                   <AlertCircle size={12} className="shrink-0" /> {submitError}
                 </div>
               )}
-              <button type="submit" disabled={isDisabled || isSubmitting} className={`w-full flex justify-center items-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 mt-2 cursor-pointer ${(isDisabled || isSubmitting) ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md active:scale-[0.98]'}`}>
-                {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Menyimpan...</> : <><CheckCircle2 size={18} /> Simpan Transaksi</>}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`w-full flex justify-center items-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 mt-2 ${
+                  isSubmitting
+                    ? 'bg-blue-400 dark:bg-blue-500 text-white cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md active:scale-[0.98] cursor-pointer'
+                }`}
+              >
+                {isSubmitting
+                  ? <><Loader2 size={16} className="animate-spin" /> Menyimpan...</>
+                  : <><CheckCircle2 size={18} /> Simpan Transaksi</>
+                }
               </button>
             </form>
           </div>
