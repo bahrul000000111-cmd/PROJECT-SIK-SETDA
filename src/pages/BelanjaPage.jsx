@@ -107,7 +107,9 @@ const BelanjaPage = () => {
   useEffect(() => { setForm(p => ({ ...p, uraianBelanjaId: '', sumberDana: '', uraian: '' })); }, [form.subKegiatanId]);
   useEffect(() => {
     if (!form.uraianBelanjaId) { setForm(p => ({ ...p, sumberDana: '', uraian: '' })); return; }
-    const rb = uraianList.find(r => r.id === form.uraianBelanjaId);
+    // String() coercion: HTML <select> always stores value as string,
+    // but rb.id is a number from the DB — strict === would always miss.
+    const rb = uraianList.find(r => String(r.id) === String(form.uraianBelanjaId));
     if (rb) setForm(p => ({ ...p, sumberDana: rb.sumberDana || 'APBD', uraian: rb.uraian || '' }));
   }, [form.uraianBelanjaId, uraianList]);
 
@@ -262,7 +264,7 @@ const BelanjaPage = () => {
                 <select name="subKegiatanId" value={form.subKegiatanId} onChange={handleChange} disabled={!form.kegiatanId} className={sCls + (!form.kegiatanId ? dCls : '')}><option value="">-- Pilih Sub Kegiatan --</option>{subKegList.map(sk => <option key={sk.id} value={sk.id}>{sk.kode} – {sk.uraian}</option>)}</select>
               </Field>
               <Field label="Uraian Belanja" required>
-                <select name="uraianBelanjaId" value={form.uraianBelanjaId} onChange={handleChange} disabled={!form.subKegiatanId} className={sCls + (!form.subKegiatanId ? dCls : '')}><option value="">-- Pilih Uraian Belanja --</option>{uraianList.map(rb => <option key={rb.id} value={rb.id}>{rb.kode} – {rb.uraian}</option>)}</select>
+                <select name="uraianBelanjaId" value={form.uraianBelanjaId} onChange={handleChange} disabled={!form.subKegiatanId} className={sCls + (!form.subKegiatanId ? dCls : '')}><option value="">-- Pilih Uraian Belanja --</option>{uraianList.map(rb => <option key={rb.id} value={String(rb.id)}>{rb.kode} – {rb.uraian}</option>)}</select>
               </Field>
               <Field label="Sumber Dana"><input value={form.sumberDana || '-'} readOnly className={iCls + ' bg-gray-50 dark:bg-gray-800 cursor-default text-gray-500 dark:text-gray-400'} /></Field>
 
