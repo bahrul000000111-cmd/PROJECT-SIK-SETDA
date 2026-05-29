@@ -7,6 +7,14 @@ const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
 const toNumeric = (s) => parseInt((s || '').replace(/\./g, ''), 10) || 0;
 const rupiahInput = (raw) => { const n = raw.replace(/[^0-9]/g, ''); return n ? parseInt(n, 10).toLocaleString('id-ID') : ''; };
+// Formats any ISO or YYYY-MM-DD date string to DD/MM/YYYY.
+// timeZone:'UTC' prevents the browser shifting the date by local offset.
+const formatTanggal = (raw) => {
+  if (!raw) return '-';
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return raw; // fallback: show as-is if unparseable
+  return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }).format(d);
+};
 
 const findNode = (nodes, id) => {
   for (const n of nodes || []) {
@@ -374,7 +382,7 @@ const BelanjaPage = () => {
                     </td></tr>
                   ) : pagedTx.map(tx => (
                     <tr key={tx.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
-                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{tx.tanggalSpm || '-'}</td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{formatTanggal(tx.tanggalSpm)}</td>
                       <td className="px-4 py-3 font-mono font-medium text-gray-900 dark:text-white">{tx.nomorSpm || '-'}</td>
                       <td className="px-4 py-3"><span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-100 dark:border-blue-800">{tx.jenisSpm || '-'}</span></td>
                       <td className="px-4 py-3 text-gray-700 dark:text-gray-300 max-w-[150px] truncate" title={tx.bagianName}>{tx.bagianName || '-'}</td>
