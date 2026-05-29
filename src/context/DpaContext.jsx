@@ -297,6 +297,7 @@ export const DpaProvider = ({ children }) => {
         nomor_spm:          formData.nomorSpm,
         tanggal_spm:        formData.tanggalSpm,
         jenis_spm:          formData.jenisSpm,
+        nomor_tbp:          formData.nomorTbp || null,      // Fix #2: was missing — needed for GU/TU Nihil
         bagian:             formData.bagianName || formData.bagianId || null,
         kode_sub_kegiatan:  formData.subKegiatanId || null,
         uraian_belanja:     formData.uraian,
@@ -325,11 +326,19 @@ export const DpaProvider = ({ children }) => {
       }
       return { success: false, message: data.message };
     } catch (err) {
-      // Ekstrak error field 'nominal' dari respons 422 untuk validasi sisa anggaran
       const errData = err.response?.data;
+
+      // Fix #3: 422 Anti-Jebol — nominal melebihi sisa anggaran
       if (errData?.errors?.nominal) {
         return { success: false, message: errData.errors.nominal[0], fieldError: 'nominal' };
       }
+
+      // Fix #3: 422 unique constraint — nomor SPM sudah dipakai
+      if (errData?.errors?.nomor_spm) {
+        return { success: false, message: `Nomor SPM: ${errData.errors.nomor_spm[0]}`, fieldError: 'nomor_spm' };
+      }
+
+      // Generic network / server errors — always return a non-null message
       return { success: false, message: getApiErrorMessage(err, 'Gagal menyimpan transaksi.') };
     }
   }, []);

@@ -109,7 +109,16 @@ const BelanjaPage = () => {
   const numPajak = toNumeric(form.nominalPajak);
   const isOverBudget = !!selectedSk && numNominal > sisaPagu;
   const showTbp = SPM_WITH_TBP.includes(form.jenisSpm);
-  const isComplete = form.nomorSpm && form.tanggalSpm && form.programId && form.subKegiatanId && form.uraianBelanjaId && form.uraian && numNominal > 0 && (!form.adaPajak || (form.jenisPajak && form.ntpn && numPajak > 0 && form.tanggalPajak));
+  const isComplete =
+    form.nomorSpm &&
+    form.tanggalSpm &&
+    form.programId &&
+    form.kegiatanId &&           // ← Fix #1: kegiatanId was missing from the guard
+    form.subKegiatanId &&
+    form.uraianBelanjaId &&
+    form.uraian &&
+    numNominal > 0 &&
+    (!form.adaPajak || (form.jenisPajak && form.ntpn && numPajak > 0 && form.tanggalPajak));
   const isDisabled = !isComplete || isOverBudget;
 
   const handleSubmit = async (e) => {
