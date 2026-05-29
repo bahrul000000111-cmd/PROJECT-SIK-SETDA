@@ -27,6 +27,18 @@ const findBagianName = (nodes, targetId) => {
   return '-';
 };
 
+/**
+ * Sebuah item dianggap LEAF (dapat dipilih) jika tidak ada item lain
+ * dalam array yang sama yang kode-nya dimulai dengan kode item ini.
+ * Contoh:
+ *   '5.1.01'           → PARENT  (ada '5.1.01.01' di array)
+ *   '5.1.01.01.01.0001'→ LEAF    (tidak ada anak yang lebih spesifik)
+ */
+const isLeafNode = (item, allItems) =>
+  !allItems.some(
+    (other) => other.kode !== item.kode && String(other.kode).startsWith(String(item.kode))
+  );
+
 const JENIS_SPM = ['GU', 'TU Nihil', 'LS', 'TU'];
 const SPM_WITH_TBP = ['GU', 'TU Nihil'];
 const JENIS_PAJAK = ['PPH21', 'PPH22', 'PPH23', 'PPHFINAL', 'PPN'];
@@ -82,9 +94,12 @@ const BelanjaPage = () => {
     const k = findNode(dpaData, form.kegiatanId);
     return (k?.children || []).filter(c => c.tipe === 'Sub Kegiatan');
   }, [dpaData, form.kegiatanId]);
+  // Hanya tampilkan leaf node (kode paling spesifik) di dropdown Uraian Belanja.
+  // Parent codes (e.g. "5.1.01") disembunyikan agar user tidak memilih kode yang salah.
   const uraianList = useMemo(() => {
     const sk = findNode(dpaData, form.subKegiatanId);
-    return sk?.rincianBelanja || [];
+    const all = sk?.rincianBelanja || [];
+    return all.filter((item) => isLeafNode(item, all));
   }, [dpaData, form.subKegiatanId]);
 
   useEffect(() => { setForm(p => ({ ...p, kegiatanId: '', subKegiatanId: '', uraianBelanjaId: '', sumberDana: '', uraian: '' })); }, [form.programId]);
