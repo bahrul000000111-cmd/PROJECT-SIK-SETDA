@@ -1,7 +1,7 @@
 import React, { useState, useContext, useMemo, useEffect } from 'react';
 import { DpaContext } from '../context/DpaContext';
 import { AuthContext } from '../context/AuthContext';
-import { Trash2, AlertCircle, CheckCircle2, Receipt, Info, Loader2 } from 'lucide-react';
+import { Trash2, AlertCircle, CheckCircle2, Receipt, Info, Loader2, Pencil } from 'lucide-react';
 
 const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
@@ -33,6 +33,23 @@ const findBagianName = (nodes, targetId) => {
     if (b.tipe === 'Bagian' && findNode(b.children, targetId)) return b.uraian;
   }
   return '-';
+};
+
+const findHierarchyPath = (dpa, subKegId) => {
+  for (const program of dpa) {
+    if (program.children) {
+      for (const kegiatan of program.children) {
+        if (kegiatan.children) {
+          for (const subKeg of kegiatan.children) {
+            if (subKeg.id === subKegId) {
+              return { programId: program.id, kegiatanId: kegiatan.id };
+            }
+          }
+        }
+      }
+    }
+  }
+  return { programId: '', kegiatanId: '' };
 };
 
 /**
@@ -72,7 +89,7 @@ const sCls = iCls + " appearance-none";
 const dCls = " opacity-50 cursor-not-allowed";
 
 const BelanjaPage = () => {
-  const { dpaData: rawDpaData, transactions: rawTransactions, addTransaction, deleteTransaction } = useContext(DpaContext);
+  const { dpaData: rawDpaData, transactions: rawTransactions, addTransaction, deleteTransaction, updateTransaction } = useContext(DpaContext);
   const { currentUser } = useContext(AuthContext);
   const isPemeriksa = currentUser?.role === 'Pemeriksa';
 
@@ -81,6 +98,9 @@ const BelanjaPage = () => {
   const transactions = Array.isArray(rawTransactions) ? rawTransactions : [];
 
   const [form, setForm] = useState(emptyForm);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   const [isSubmitting, setIsSubmitting]     = useState(false);
   const [submitError, setSubmitError]       = useState('');
@@ -110,9 +130,42 @@ const BelanjaPage = () => {
     return all.filter((item) => isLeafNode(item, all));
   }, [dpaData, form.subKegiatanId]);
 
-  useEffect(() => { setForm(p => ({ ...p, kegiatanId: '', subKegiatanId: '', uraianBelanjaId: '', sumberDana: '', uraian: '' })); }, [form.programId]);
-  useEffect(() => { setForm(p => ({ ...p, subKegiatanId: '', uraianBelanjaId: '', sumberDana: '', uraian: '' })); }, [form.kegiatanId]);
-  useEffect(() => { setForm(p => ({ ...p, uraianBelanjaId: '', sumberDana: '', uraian: '' })); }, [form.subKegiatanId]);
+  const handleProgramChange = (e) => {
+    const val = e.target.value;
+    setForm(p => ({
+      ...p,
+      programId: val,
+      kegiatanId: '',
+      subKegiatanId: '',
+      uraianBelanjaId: '',
+      sumberDana: '',
+      uraian: '',
+    }));
+  };
+
+  const handleKegiatanChange = (e) => {
+    const val = e.target.value;
+    setForm(p => ({
+      ...p,
+      kegiatanId: val,
+      subKegiatanId: '',
+      uraianBelanjaId: '',
+      sumberDana: '',
+      uraian: '',
+    }));
+  };
+
+  const handleSubKegiatanChange = (e) => {
+    const val = e.target.value;
+    setForm(p => ({
+      ...p,
+      subKegiatanId: val,
+      uraianBelanjaId: '',
+      sumberDana: '',
+      uraian: '',
+    }));
+  };
+
   useEffect(() => {
     if (!form.uraianBelanjaId) { setForm(p => ({ ...p, sumberDana: '', uraian: '' })); return; }
     // String() coercion: HTML <select> always stores value as string,
@@ -127,7 +180,7 @@ const BelanjaPage = () => {
   const selectedSk = useMemo(() => findNode(dpaData, form.subKegiatanId), [dpaData, form.subKegiatanId]);
   const totalDpa = selectedSk?.totalAnggaran || 0;
   const totalTerpakai = (Array.isArray(transactions) ? transactions : [])
-    .filter(t => t?.subKegiatanId === form.subKegiatanId)
+    .filter(t => t?.subKegiatanId === form.subKegiatanId && (!isEditing || t.id !== editingId))
     .reduce((s, t) => s + (t?.nominal || 0), 0);
   const sisaPagu = totalDpa - totalTerpakai;
   const numNominal = toNumeric(form.nominal);
@@ -138,13 +191,51 @@ const BelanjaPage = () => {
     form.nomorSpm &&
     form.tanggalSpm &&
     form.programId &&
-    form.kegiatanId &&           // ← Fix #1: kegiatanId was missing from the guard
+    form.kegiatanId &&
     form.subKegiatanId &&
     form.uraianBelanjaId &&
     form.uraian &&
     numNominal > 0 &&
     (!form.adaPajak || (form.jenisPajak && form.ntpn && numPajak > 0 && form.tanggalPajak));
   const isDisabled = !isComplete || isOverBudget;
+
+  const handleEditClick = (tx) => {
+    const { programId, kegiatanId } = findHierarchyPath(dpaData, tx.subKegiatanId);
+    const skNode = findNode(dpaData, tx.subKegiatanId);
+    const rbItem = skNode?.rincianBelanja?.find(rb => rb.uraian === tx.uraian);
+    const uraianBelanjaId = rbItem ? String(rbItem.id) : '';
+
+    const formatDateForInput = (rawDate) => {
+      if (!rawDate) return '';
+      const d = new Date(rawDate);
+      if (isNaN(d.getTime())) return '';
+      return d.toISOString().split('T')[0];
+    };
+
+    setForm({
+      nomorSpm:        tx.nomorSpm || '',
+      tanggalSpm:      formatDateForInput(tx.tanggalSpm),
+      jenisSpm:        tx.jenisSpm || 'GU',
+      nomorTbp:        tx.nomorTbp === '-' ? '' : (tx.nomorTbp || ''),
+      programId:       programId,
+      kegiatanId:      kegiatanId,
+      subKegiatanId:   tx.subKegiatanId || '',
+      uraianBelanjaId: uraianBelanjaId,
+      sumberDana:      tx.sumberDana || '',
+      uraian:          tx.uraian || '',
+      nominal:         rupiahInput(String(tx.nominal || 0)),
+      adaPajak:        tx.adaPajak || false,
+      jenisPajak:      tx.jenisPajak || 'PPN',
+      ntpn:            tx.ntpn || '',
+      nominalPajak:    tx.nominalPajak ? rupiahInput(String(tx.nominalPajak)) : '',
+      tanggalPajak:    formatDateForInput(tx.tanggalPajak),
+    });
+
+    setIsEditing(true);
+    setEditingId(tx.id);
+    setSubmitError('');
+    setNominalFieldError('');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -171,7 +262,7 @@ const BelanjaPage = () => {
     setNominalFieldError('');
     setIsSubmitting(true);
     try {
-      const result = await addTransaction({
+      const payload = {
         nomorSpm:       form.nomorSpm,
         tanggalSpm:     form.tanggalSpm,
         jenisSpm:       form.jenisSpm,
@@ -190,9 +281,19 @@ const BelanjaPage = () => {
         ntpn:           form.adaPajak ? form.ntpn : null,
         nominalPajak:   form.adaPajak ? numPajak : 0,
         tanggalPajak:   form.adaPajak ? form.tanggalPajak : null,
-      });
+      };
+
+      let result;
+      if (isEditing) {
+        result = await updateTransaction(editingId, payload);
+      } else {
+        result = await addTransaction(payload);
+      }
+
       if (result.success) {
         setForm(emptyForm);
+        setIsEditing(false);
+        setEditingId(null);
       } else if (result.fieldError === 'nominal') {
         // 422 sisa anggaran — tampilkan di bawah input nominal
         setNominalFieldError(result.message || 'Nominal melebihi sisa anggaran.');
@@ -263,13 +364,13 @@ const BelanjaPage = () => {
 
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider pt-1">Data Kegiatan (Hierarki DPA)</p>
               <Field label="Program" required>
-                <select name="programId" value={form.programId} onChange={handleChange} className={sCls}><option value="">-- Pilih Program --</option>{programList.map(p => <option key={p.id} value={p.id}>{p.kode} – {p.uraian}</option>)}</select>
+                <select name="programId" value={form.programId} onChange={handleProgramChange} className={sCls}><option value="">-- Pilih Program --</option>{programList.map(p => <option key={p.id} value={p.id}>{p.kode} – {p.uraian}</option>)}</select>
               </Field>
               <Field label="Kegiatan" required>
-                <select name="kegiatanId" value={form.kegiatanId} onChange={handleChange} disabled={!form.programId} className={sCls + (!form.programId ? dCls : '')}><option value="">-- Pilih Kegiatan --</option>{kegiatanList.map(k => <option key={k.id} value={k.id}>{k.kode} – {k.uraian}</option>)}</select>
+                <select name="kegiatanId" value={form.kegiatanId} onChange={handleKegiatanChange} disabled={!form.programId} className={sCls + (!form.programId ? dCls : '')}><option value="">-- Pilih Kegiatan --</option>{kegiatanList.map(k => <option key={k.id} value={k.id}>{k.kode} – {k.uraian}</option>)}</select>
               </Field>
               <Field label="Sub Kegiatan" required>
-                <select name="subKegiatanId" value={form.subKegiatanId} onChange={handleChange} disabled={!form.kegiatanId} className={sCls + (!form.kegiatanId ? dCls : '')}><option value="">-- Pilih Sub Kegiatan --</option>{subKegList.map(sk => <option key={sk.id} value={sk.id}>{sk.kode} – {sk.uraian}</option>)}</select>
+                <select name="subKegiatanId" value={form.subKegiatanId} onChange={handleSubKegiatanChange} disabled={!form.kegiatanId} className={sCls + (!form.kegiatanId ? dCls : '')}><option value="">-- Pilih Sub Kegiatan --</option>{subKegList.map(sk => <option key={sk.id} value={sk.id}>{sk.kode} – {sk.uraian}</option>)}</select>
               </Field>
               <Field label="Uraian Belanja" required>
                 <select name="uraianBelanjaId" value={form.uraianBelanjaId} onChange={handleChange} disabled={!form.subKegiatanId} className={sCls + (!form.subKegiatanId ? dCls : '')}><option value="">-- Pilih Uraian Belanja --</option>{uraianList.map(rb => <option key={rb.id} value={String(rb.id)}>{rb.kode} – {rb.uraian}</option>)}</select>
@@ -314,20 +415,50 @@ const BelanjaPage = () => {
                   <AlertCircle size={12} className="shrink-0" /> {submitError}
                 </div>
               )}
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className={`w-full flex justify-center items-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 mt-2 ${
-                  isSubmitting
-                    ? 'bg-blue-400 dark:bg-blue-500 text-white cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md active:scale-[0.98] cursor-pointer'
-                }`}
-              >
-                {isSubmitting
-                  ? <><Loader2 size={16} className="animate-spin" /> Menyimpan...</>
-                  : <><CheckCircle2 size={18} /> Simpan Transaksi</>
-                }
-              </button>
+              {isEditing ? (
+                <div className="flex gap-3 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForm(emptyForm);
+                      setIsEditing(false);
+                      setEditingId(null);
+                      setSubmitError('');
+                      setNominalFieldError('');
+                    }}
+                    disabled={isSubmitting}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-xl shadow-sm active:scale-[0.98] transition-all cursor-pointer disabled:opacity-60"
+                  >
+                    {isSubmitting ? (
+                      <><Loader2 size={14} className="animate-spin" /> Menyimpan...</>
+                    ) : (
+                      'Simpan Perubahan'
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className={`w-full flex justify-center items-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 mt-2 ${
+                    isSubmitting
+                      ? 'bg-blue-400 dark:bg-blue-500 text-white cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md active:scale-[0.98] cursor-pointer'
+                  }`}
+                >
+                  {isSubmitting
+                    ? <><Loader2 size={16} className="animate-spin" /> Menyimpan...</>
+                    : <><CheckCircle2 size={18} /> Simpan Transaksi</>
+                  }
+                </button>
+              )}
             </form>
           </div>
         </div>
@@ -389,7 +520,26 @@ const BelanjaPage = () => {
                       <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{tx.uraian}</td>
                       <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white text-right">{formatRupiah(tx.nominal)}</td>
                       <td className="px-4 py-3">{tx.adaPajak ? <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border border-amber-100 dark:border-amber-800">{tx.jenisPajak}</span> : <span className="text-xs text-gray-400">–</span>}</td>
-                      {!isPemeriksa && (<td className="px-4 py-3"><button onClick={() => deleteTransaction(tx.id)} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-colors cursor-pointer" title="Hapus"><Trash2 size={15} /></button></td>)}
+                      {!isPemeriksa && (
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleEditClick(tx)}
+                              className="p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-md transition-colors cursor-pointer"
+                              title="Edit"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              onClick={() => deleteTransaction(tx.id)}
+                              className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-colors cursor-pointer"
+                              title="Hapus"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

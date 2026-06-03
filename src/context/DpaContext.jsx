@@ -358,7 +358,27 @@ export const DpaProvider = ({ children }) => {
 
   const updateTransaction = useCallback(async (id, changes) => {
     try {
-      const { data } = await api.put(`/transactions/${id}`, changes);
+      const payload = {
+        nomor_spm:          changes.nomorSpm,
+        tanggal_spm:        changes.tanggalSpm,
+        jenis_spm:          changes.jenisSpm,
+        nomor_tbp:          changes.nomorTbp || null,
+        bagian:             changes.bagianName || changes.bagianId || null,
+        kode_sub_kegiatan:  changes.subKegiatanId || null,
+        uraian_belanja:     changes.uraian,
+        sumber_dana:        changes.sumberDana,
+        nominal:            changes.nominal,
+        ...(changes.adaPajak ? {
+          pajak: {
+            tanggal_pajak: changes.tanggalPajak,
+            jenis_pajak:   changes.jenisPajak,
+            ntpn:          changes.ntpn || null,
+            nominal_pajak: changes.nominalPajak,
+          },
+        } : null),
+        _method: 'PUT',
+      };
+      const { data } = await api.post(`/transactions/${id}`, payload);
       if (data.success) {
         const updated = transformTransaction(data.data);
         if (updated) {
@@ -371,6 +391,13 @@ export const DpaProvider = ({ children }) => {
       }
       return { success: false, message: data.message };
     } catch (err) {
+      const errData = err.response?.data;
+      if (errData?.errors?.nominal) {
+        return { success: false, message: errData.errors.nominal[0], fieldError: 'nominal' };
+      }
+      if (errData?.errors?.nomor_spm) {
+        return { success: false, message: `Nomor SPM: ${errData.errors.nomor_spm[0]}`, fieldError: 'nomor_spm' };
+      }
       return { success: false, message: getApiErrorMessage(err, 'Gagal memperbarui transaksi.') };
     }
   }, []);
@@ -384,7 +411,7 @@ export const DpaProvider = ({ children }) => {
       fd.append('jenis_dokumen',   formData.jenisDokumen);
       fd.append('tanggal_dokumen', formData.tanggal);
       fd.append('keterangan',      formData.keterangan || '');
-      if (formData.fileDokumen instanceof File) {
+      if (formData.fileDokumen instanceof window.File) {
         fd.append('file_dokumen', formData.fileDokumen);
       }
 
@@ -423,7 +450,30 @@ export const DpaProvider = ({ children }) => {
 
   const updateArsip = useCallback(async (id, changes) => {
     try {
-      const { data } = await api.post(`/arsip/${id}`, changes);
+      // ── Laravel Method Spoofing ────────────────────────────────────────────
+      // PHP tidak bisa membaca multipart/form-data pada request PUT native.
+      // Solusi: kirim via POST dengan field `_method=PUT` agar Laravel routing
+      // mengenalinya sebagai PUT (lihat: https://laravel.com/docs/routing#method-spoofing)
+      let fd;
+      if (changes instanceof FormData) {
+        // Jika caller sudah mengirim FormData, sisipkan spoofing langsung
+        fd = changes;
+      } else {
+        // Jika caller mengirim plain object, konversi dulu ke FormData
+        fd = new FormData();
+        Object.entries(changes).forEach(([key, value]) => {
+          if (value !== null && value !== undefined) {
+            fd.append(key, value);
+          }
+        });
+      }
+      // Sisipkan field _method agar Laravel memperlakukan request ini sebagai PUT
+      fd.append('_method', 'PUT');
+
+      const { data } = await api.post(`/arsip/${id}`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
       if (data.success) {
         setArsipDokumen(prev => {
           const base = Array.isArray(prev) ? prev : [];
