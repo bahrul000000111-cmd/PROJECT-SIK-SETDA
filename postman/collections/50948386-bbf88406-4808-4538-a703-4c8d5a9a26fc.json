@@ -1,0 +1,554 @@
+{
+	"info": {
+		"_postman_id": "50948386-bbf88406-4808-4538-a703-4c8d5a9a26fc",
+		"name": "SIK SETDA — API Collection",
+		"description": "Koleksi endpoint REST API untuk Sistem Informasi Keuangan SETDA (SIK SETDA).\nBase URL: {{base_url}}\nAuth: Bearer Token (Laravel Sanctum)\n\nCara pakai:\n1. Set variable 'base_url' = URL server Anda (misal: http://127.0.0.1:8000/api)\n2. Login via POST /login, copy 'token' dari response\n3. Set variable 'bearer_token' = nilai token tersebut\n4. Semua request lain sudah dikonfigurasi untuk menggunakan Bearer Token secara otomatis.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Auth",
+			"item": [
+				{
+					"name": "Login",
+					"id": "50948386-c1f847f8-aacd-46ac-8e28-80f9f85479d5",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"Hapsa\",\n  \"password\": \"12345678\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"login"
+							]
+						},
+						"description": "Login dengan username dan password. Salin nilai 'token' dari response ke variable 'bearer_token'."
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"id": "50948386-c1b2205c-f47b-494a-b021-8a4d525d5351",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"logout"
+							]
+						},
+						"description": "Invalidate token aktif (membutuhkan Bearer Token)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User (Me)",
+					"id": "50948386-8bfedcfe-6966-40bc-8103-214d3b6868d1",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"me"
+							]
+						},
+						"description": "Mengembalikan data user yang sedang login berdasarkan Bearer Token."
+					},
+					"response": []
+				}
+			],
+			"id": "50948386-483140b7-c66b-4e85-a4d8-ea618f0cbf81",
+			"description": "Endpoint autentikasi menggunakan Laravel Sanctum (token-based)."
+		},
+		{
+			"name": "2. Users (Kelola Pengguna)",
+			"item": [
+				{
+					"name": "GET All Users",
+					"id": "50948386-1b43666b-1f4f-4974-bb2f-a92c5addb7f8",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users"
+							]
+						},
+						"description": "Mengambil daftar semua pengguna beserta relasi Bagian (eager-loaded)."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create User",
+					"id": "50948386-b2d72f26-d354-42af-bb3d-cccdb049c555",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nama_lengkap\": \"Bahrul Ulum\",\n  \"username\": \"bahrul.ulum\",\n  \"password\": \"password123\",\n  \"role\": \"Bendahara\",\n  \"kode_bagian\": \"1.01.0.00.0.0000\",\n  \"nip\": \"199001012020011001\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/users",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users"
+							]
+						},
+						"description": "Membuat akun pengguna baru. Jika role bukan 'Admin', field kode_bagian WAJIB diisi dan harus ada di tabel bagians. Jika tidak, response 422 akan dikembalikan."
+					},
+					"response": []
+				},
+				{
+					"name": "PUT Update User",
+					"id": "50948386-a28d012a-5fec-41dc-ac6f-75a410d7be6b",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nama_lengkap\": \"Bahrul Ulum Baru\",\n  \"role\": \"Pemeriksa\",\n  \"kode_bagian\": \"1.01.0.00.0.0000\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/users/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						},
+						"description": "Memperbarui data pengguna. Ganti '1' dengan ID user yang ingin diupdate."
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE User",
+					"id": "50948386-2ae7162b-c12a-4982-95cb-5fc1e71517e4",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						},
+						"description": "Menghapus akun pengguna secara permanen. Ganti '1' dengan ID user."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Bagian List (Dropdown)",
+					"id": "50948386-94ace465-5108-4818-b5c6-1f8389a612d6",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/bagians/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"bagians",
+								"list"
+							]
+						},
+						"description": "Mengembalikan daftar ringkas semua Bagian (kode_bagian + nama_bagian) untuk kebutuhan dropdown pemilihan bagian di form pengguna."
+					},
+					"response": []
+				}
+			],
+			"id": "50948386-c0693f1c-04ef-4a07-8884-8a2ddf900cf5",
+			"description": "CRUD endpoint untuk manajemen pengguna sistem. Hanya bisa diakses oleh Admin."
+		},
+		{
+			"name": "3. DPA (Data Pagu Anggaran)",
+			"item": [
+				{
+					"name": "GET DPA Flat List",
+					"id": "50948386-b120d8aa-789f-4e62-8a3c-15f201d48925",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/dpa?per_page=50",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"dpa"
+							],
+							"query": [
+								{
+									"key": "per_page",
+									"value": "50",
+									"description": "Jumlah per halaman (-1 untuk semua)"
+								},
+								{
+									"key": "sumber_dana",
+									"value": "DAU",
+									"description": "Filter sumber dana (DAU/DAK/dll)",
+									"disabled": true
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Pencarian kata kunci",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Mengambil data DPA dalam format flat list, dapat difilter dan dipaginasi."
+					},
+					"response": []
+				},
+				{
+					"name": "GET DPA Hierarchy",
+					"id": "50948386-6664f5e0-36f4-4272-b5a5-07276fa852e6",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/dpa/hierarchy",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"dpa",
+								"hierarchy"
+							]
+						},
+						"description": "Mengambil data DPA dalam struktur hierarki berjenjang: Bagian → Program → Kegiatan → Sub Kegiatan → Uraian Rincian."
+					},
+					"response": []
+				}
+			],
+			"id": "50948386-66bcf17b-cf08-4d89-ad6c-9ecf9d7b4cb5",
+			"description": "Endpoint untuk mengakses data DPA (Dokumen Pelaksanaan Anggaran)."
+		},
+		{
+			"name": "4. Transactions (Riwayat Transaksi)",
+			"item": [
+				{
+					"name": "GET Transactions (with Filter & Pagination)",
+					"id": "50948386-7e544f03-7c5c-4379-9916-81dcb569a4eb",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/transactions?page=1&per_page=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"transactions"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Nomor halaman (default: 1)"
+								},
+								{
+									"key": "per_page",
+									"value": "10",
+									"description": "Jumlah per halaman (default: 10, -1 untuk semua)"
+								},
+								{
+									"key": "start_date",
+									"value": "2026-01-01",
+									"description": "Tanggal mulai filter (format: YYYY-MM-DD)",
+									"disabled": true
+								},
+								{
+									"key": "end_date",
+									"value": "2026-12-31",
+									"description": "Tanggal akhir filter (format: YYYY-MM-DD)",
+									"disabled": true
+								},
+								{
+									"key": "jenis_spm",
+									"value": "GU",
+									"description": "Filter jenis SPM: GU / TU / TU Nihil / LS",
+									"disabled": true
+								},
+								{
+									"key": "bagian",
+									"value": "",
+									"description": "Filter nama bagian (partial match)",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Mengambil riwayat transaksi belanja dengan dukungan filter tanggal (start_date / end_date) dan pagination 10 per halaman (sesuai rubrik)."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create Transaction (with DPA Validation)",
+					"id": "50948386-d1a24cbc-2aee-4b51-9879-49bc86e69290",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nomor_spm\": \"SPM-2026-001\",\n  \"tanggal_spm\": \"2026-05-20\",\n  \"jenis_spm\": \"GU\",\n  \"bagian\": \"Bagian Umum\",\n  \"kode_sub_kegiatan\": \"1.01.03.2.01\",\n  \"uraian_belanja\": \"Belanja ATK Kantor\",\n  \"sumber_dana\": \"DAU\",\n  \"nominal\": 4500000,\n  \"pajak\": {\n    \"tanggal_pajak\": \"2026-05-20\",\n    \"jenis_pajak\": \"PPN\",\n    \"ntpn\": \"ABC1234567890\",\n    \"nominal_pajak\": 450000\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/transactions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"transactions"
+							]
+						},
+						"description": "Menyimpan transaksi belanja baru.\n\nANTI-JEBOL VALIDATION:\nJika kode_sub_kegiatan diisi, sistem akan memeriksa sisa anggaran DPA.\nJika nominal > sisa anggaran, akan dikembalikan response 422:\n{\n  \"message\": \"Validasi Gagal: Nominal melebihi Sisa Anggaran DPA!\",\n  \"errors\": { \"nominal\": [\"Sisa anggaran saat ini hanya Rp X\"] }\n}\n\nField 'pajak' bersifat opsional — hanya isi jika ada transaksi pajak."
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE Transaction",
+					"id": "50948386-981ea080-0be9-4d21-9283-5c28044563b4",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/transactions/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"transactions",
+								"1"
+							]
+						},
+						"description": "Menghapus transaksi beserta data pajak terkait. Ganti '1' dengan ID transaksi."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Transactions Summary",
+					"id": "50948386-b175561d-3d10-43c1-8023-f955737ab989",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/transactions/summary",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"transactions",
+								"summary"
+							]
+						},
+						"description": "Mengembalikan ringkasan total belanja dikelompokkan per jenis SPM (GU/TU/LS) beserta grand total. Digunakan untuk Dashboard."
+					},
+					"response": []
+				}
+			],
+			"id": "50948386-86d98af4-76fe-4bc2-aab6-32f46973038a",
+			"description": "CRUD endpoint untuk transaksi belanja SPM. Mendukung filter tanggal dan pagination."
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{bearer_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8000/api",
+			"type": "string"
+		},
+		{
+			"key": "bearer_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
