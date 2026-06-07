@@ -33,12 +33,28 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ─── Response Interceptor: Handle 401 ────────────────────────────────────────
+// ─── Response Interceptor: Handle SSL Block + 401 ────────────────────────────
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // ── Deteksi SSL self-signed block ─────────────────────────────────────
+    // Ciri khas: error.message === 'Network Error' dan tidak ada error.response
+    // (browser memblokir request sebelum server sempat membalas).
+    // Timeout (ECONNABORTED) dikecualikan karena bukan kasus SSL.
+    const isNetworkError =
+      !error.response &&
+      error.message === 'Network Error' &&
+      error.code !== 'ECONNABORTED';
+
+    if (isNetworkError) {
+      // Dispatch CustomEvent ke window — dibaca oleh SslBlockContext
+      // tanpa perlu mengimport React/Context di sini (zero circular dep).
+      window.dispatchEvent(new CustomEvent('sik:ssl-blocked'));
+      return Promise.reject(error);
+    }
+
+    // ── Handle 401 Unauthorized: paksa logout & redirect ─────────────────
     if (error.response?.status === 401) {
-      // Hapus sisa session dan redirect ke login
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_user');
       // Hindari redirect loop jika sudah di /login
@@ -46,9 +62,11 @@ api.interceptors.response.use(
         window.location.href = '/login';
       }
     }
+
     return Promise.reject(error);
   }
 );
+
 
 export default api;
 
